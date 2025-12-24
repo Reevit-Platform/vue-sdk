@@ -3,6 +3,8 @@
  * Unified Payment Widget for Vue 3 Applications
  */
 
+import './styles.css';
+
 // Components
 export { default as ReevitCheckout } from './components/ReevitCheckout.vue';
 export { default as PaymentMethodSelector } from './components/PaymentMethodSelector.vue';
