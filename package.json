@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "vite build",
-    "postbuild": "cp dist/svelte.css dist/styles.css",
+    "postbuild": "cp dist/vue.css dist/styles.css",
     "dev": "vite build --watch",
     "typecheck": "vue-tsc --noEmit"
   },
