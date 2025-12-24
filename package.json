@@ -1,0 +1,58 @@
+{
+  "name": "@reevit/vue",
+  "version": "0.1.0",
+  "description": "Unified Payment Widget for Vue 3 Applications",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "keywords": [
+    "reevit",
+    "payments",
+    "africa",
+    "vue",
+    "vue3",
+    "sdk"
+  ],
+  "author": "Reevit",
+  "license": "MIT",
+  "homepage": "https://github.com/Reevit-Platform/vue#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Reevit-Platform/vue.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Reevit-Platform/vue/issues"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  },
+  "dependencies": {
+    "@reevit/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.3.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vue": "^3.5.0",
+    "vue-tsc": "^2.2.0"
+  }
+}
