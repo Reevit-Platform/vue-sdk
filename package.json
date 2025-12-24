@@ -43,7 +43,7 @@
     "vue": "^3.3.0"
   },
   "dependencies": {
-    "@reevit/core": "file:../core"
+    "@reevit/core": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
