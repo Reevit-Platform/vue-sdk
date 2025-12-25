@@ -56,7 +56,7 @@ const {
 
 const isModalVisible = ref(props.isOpen ?? false);
 
-watch(() => props.isOpen, (val) => {
+watch(() => props.isOpen, (val: any) => {
   if (val !== undefined) isModalVisible.value = val;
 });
 
@@ -127,7 +127,7 @@ const handleProcessPayment = async (data: any) => {
 const themeVars = computed(() => createThemeVariables(props.theme || {}));
 
 // Lock scroll when open
-watch(isModalVisible, (val) => {
+watch(isModalVisible, (val: any) => {
   if (val) {
     document.body.style.overflow = 'hidden';
   } else {
@@ -169,8 +169,11 @@ const ready = computed(() => isReady.value);
           </button>
 
           <div class="reevit-modal-header">
-            <h2 class="reevit-modal-title">Reevit Checkout</h2>
-            <p class="reevit-modal-subtitle">Secure payment powered by Reevit</p>
+            <img 
+              src="https://i.imgur.com/bzUR5Lm.png" 
+              alt="Reevit" 
+              class="reevit-modal__logo"
+            />
           </div>
 
           <div class="reevit-modal-body">
