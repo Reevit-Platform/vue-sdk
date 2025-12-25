@@ -18,6 +18,7 @@ const props = defineProps<{
   paymentMethods?: ('card' | 'mobile_money' | 'bank_transfer')[];
   theme?: ReevitTheme;
   isOpen?: boolean;
+  apiBaseUrl?: string;
 }>();
 
 const emit = defineEmits<{
@@ -49,6 +50,7 @@ const {
     metadata: props.metadata,
     paymentMethods: props.paymentMethods,
   },
+  apiBaseUrl: props.apiBaseUrl,
   onSuccess: (result) => emit('success', result),
   onError: (err) => emit('error', err),
   onClose: () => emit('close'),
