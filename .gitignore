@@ -43,4 +43,4 @@ coverage/
 # Package manager lock files (keep one based on your preference)
 # yarn.lock
 # pnpm-lock.yaml
-# package-lock.json
+package-lock.json
