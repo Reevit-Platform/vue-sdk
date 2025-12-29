@@ -19,6 +19,7 @@ const props = defineProps<{
   theme?: ReevitTheme;
   isOpen?: boolean;
   apiBaseUrl?: string;
+  initialPaymentIntent?: any;
 }>();
 
 const emit = defineEmits<{
@@ -49,6 +50,7 @@ const {
     reference: props.reference,
     metadata: props.metadata,
     paymentMethods: props.paymentMethods,
+    initialPaymentIntent: props.initialPaymentIntent,
   },
   apiBaseUrl: props.apiBaseUrl,
   onSuccess: (result) => emit('success', result),
@@ -64,10 +66,19 @@ watch(() => props.isOpen, (val: any) => {
 
 const handleOpen = () => {
   isModalVisible.value = true;
-  if (!paymentIntent.value) {
+  if (!paymentIntent.value && status.value === 'idle') {
     initialize();
   }
 };
+
+// Auto-advance logic
+watch([isModalVisible, paymentIntent, selectedMethod], ([visible, intent, method]) => {
+  if (visible && intent && method) {
+    if (method === 'card') {
+      handleProcessPayment(null);
+    }
+  }
+});
 
 const handleClose = () => {
   isModalVisible.value = false;
