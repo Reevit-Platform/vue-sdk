@@ -26,6 +26,7 @@ export type {
   MobileMoneyFormData,
   PaymentIntent,
   PSPType,
+  PaymentSource,
 } from '@reevit/core';
 
 export {

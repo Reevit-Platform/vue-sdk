@@ -14,7 +14,7 @@
     "jsx": "preserve",
     "types": ["vite/client"],
     "paths": {
-      "@reevit/core": ["../core/dist/index.d.ts"]
+      "@reevit/core": ["../core/src/index.ts"]
     }
   },
   "include": ["src/**/*", "src/**/*.vue"],
