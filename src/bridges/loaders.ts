@@ -132,6 +132,7 @@ export interface HubtelConfig {
   callbackUrl?: string;
   customerPhone?: string;
   customerEmail?: string;
+  basicAuth?: string;
   onSuccess: (response: Record<string, unknown>) => void;
   onClose: () => void;
 }
@@ -241,7 +242,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
     merchantAccount: typeof config.clientId === 'string'
       ? parseInt(config.clientId, 10)
       : config.clientId,
-    basicAuth: '',
+    basicAuth: config.basicAuth || '',
   };
 
   checkout.openModal({

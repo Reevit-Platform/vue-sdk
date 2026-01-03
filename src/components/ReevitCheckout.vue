@@ -2,7 +2,8 @@
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
 import { createThemeVariables } from '@reevit/core';
-import type { ReevitTheme } from '@reevit/core';
+import type { ReevitTheme, PaymentIntent } from '@reevit/core';
+
 import PaymentMethodSelector from './PaymentMethodSelector.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
 import { 
@@ -98,9 +99,10 @@ const handleSelectMethod = (method: any) => {
 };
 
 const handleProcessPayment = async (data: any) => {
-  if (!paymentIntent.value) return;
+  const intent = paymentIntent.value as PaymentIntent | null;
+  if (!intent) return;
 
-  const psp = paymentIntent.value.recommendedPsp;
+  const psp = intent.recommendedPsp;
 
   try {
     if (psp === 'paystack') {
@@ -109,24 +111,25 @@ const handleProcessPayment = async (data: any) => {
         email: props.email || '',
         amount: props.amount,
         currency: props.currency,
-        ref: paymentIntent.value.id,
+        ref: intent.id,
         onSuccess: (res) => handlePspSuccess(res),
         onClose: () => {},
       });
     } else if (psp === 'hubtel') {
       await openHubtelPopup({
-        clientId: props.publicKey,
+        clientId: (intent.pspCredentials?.merchantAccount as string) || props.publicKey,
         purchaseDescription: `Payment for ${props.amount} ${props.currency}`,
         amount: props.amount,
         customerPhone: data?.phone || props.phone,
         customerEmail: props.email,
+        basicAuth: intent.pspCredentials?.basicAuth as string,
         onSuccess: (res) => handlePspSuccess(res),
         onClose: () => {},
       });
     } else if (psp === 'flutterwave') {
       await openFlutterwaveModal({
         public_key: props.publicKey,
-        tx_ref: paymentIntent.value.id,
+        tx_ref: intent.id,
         amount: props.amount,
         currency: props.currency,
         customer: {
@@ -138,11 +141,11 @@ const handleProcessPayment = async (data: any) => {
       });
     } else if (psp === 'monnify') {
       await openMonnifyModal({
-        apiKey: paymentIntent.value.pspPublicKey || props.publicKey,
+        apiKey: intent.pspPublicKey || props.publicKey,
         contractCode: (props.metadata?.contract_code as string) || props.publicKey,
         amount: props.amount,
         currency: props.currency,
-        reference: paymentIntent.value.reference || paymentIntent.value.id,
+        reference: intent.reference || intent.id,
         customerName: (props.metadata?.customer_name as string) || props.email || '',
         customerEmail: props.email || '',
         customerPhone: data?.phone || props.phone,
@@ -151,12 +154,12 @@ const handleProcessPayment = async (data: any) => {
         onClose: () => {},
       });
     } else if (psp === 'mpesa') {
-      const apiEndpoint = `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${paymentIntent.value.id}/mpesa`;
+      const apiEndpoint = `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${intent.id}/mpesa`;
       await initiateMPesaSTKPush({
         phoneNumber: data?.phone || props.phone || '',
         amount: props.amount,
-        reference: paymentIntent.value.reference || paymentIntent.value.id,
-        description: `Payment ${paymentIntent.value.reference || ''}`,
+        reference: intent.reference || intent.id,
+        description: `Payment ${intent.reference || ''}`,
         onInitiated: () => {},
         onSuccess: (res) => handlePspSuccess(res),
         onError: (err) => handlePspError({ code: 'MPESA_ERROR', message: err.message }),

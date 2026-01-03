@@ -53,6 +53,7 @@ function mapToPaymentIntent(
     id: response.id,
     clientSecret: response.client_secret,
     pspPublicKey: response.psp_public_key,
+    pspCredentials: response.psp_credentials,
     amount: response.amount,
     currency: response.currency,
     status: response.status as PaymentIntent['status'],
@@ -252,7 +253,7 @@ export function useReevit(options: UseReevitOptions) {
 
   // Computed properties
   const status = computed(() => state.value.status);
-  const paymentIntent = computed(() => state.value.paymentIntent);
+  const paymentIntent = computed<PaymentIntent | null>(() => state.value.paymentIntent);
   const selectedMethod = computed(() => state.value.selectedMethod);
   const error = computed(() => state.value.error);
   const result = computed(() => state.value.result);
