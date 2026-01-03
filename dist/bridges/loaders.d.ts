@@ -66,7 +66,8 @@ interface StripeCardElement {
  */
 export declare function loadPaystackScript(): Promise<void>;
 /**
- * Loads the Hubtel checkout script
+ * Hubtel now uses npm package @hubteljs/checkout
+ * No script loading needed
  */
 export declare function loadHubtelScript(): Promise<void>;
 /**
@@ -183,7 +184,7 @@ export interface MPesaConfig {
  */
 export declare function openPaystackPopup(config: PaystackConfig): Promise<void>;
 /**
- * Opens Hubtel popup
+ * Opens Hubtel popup using the @hubteljs/checkout npm package
  */
 export declare function openHubtelPopup(config: HubtelConfig): Promise<void>;
 /**

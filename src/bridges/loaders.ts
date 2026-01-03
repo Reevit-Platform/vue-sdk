@@ -3,6 +3,8 @@
  * Dynamic script loading for PSP popups
  */
 
+import CheckoutSdk from '@hubteljs/checkout';
+
 declare global {
   interface Window {
     PaystackPop?: {
@@ -84,10 +86,11 @@ export function loadPaystackScript(): Promise<void> {
 }
 
 /**
- * Loads the Hubtel checkout script
+ * Hubtel now uses npm package @hubteljs/checkout
+ * No script loading needed
  */
 export function loadHubtelScript(): Promise<void> {
-  return loadScript('https://checkout-v3.hubtel.com/js/checkout.js', 'hubtel-script');
+  return Promise.resolve();
 }
 
 /**
@@ -220,24 +223,42 @@ export async function openPaystackPopup(config: PaystackConfig): Promise<void> {
 }
 
 /**
- * Opens Hubtel popup
+ * Opens Hubtel popup using the @hubteljs/checkout npm package
  */
 export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
-  await loadHubtelScript();
+  const checkout = new CheckoutSdk();
 
-  if (!window.HubtelCheckout) {
-    throw new Error('Hubtel script not loaded');
-  }
-
-  window.HubtelCheckout.initPay({
-    clientId: config.clientId,
-    purchaseDescription: config.purchaseDescription,
+  const purchaseInfo = {
     amount: config.amount,
-    callbackUrl: config.callbackUrl,
-    customerPhone: config.customerPhone,
-    customerEmail: config.customerEmail,
-    onSuccess: config.onSuccess,
-    onClose: config.onClose,
+    purchaseDescription: config.purchaseDescription,
+    customerPhoneNumber: config.customerPhone || '',
+    clientReference: `hubtel_${Date.now()}`,
+  };
+
+  const checkoutConfig = {
+    branding: 'enabled' as const,
+    callbackUrl: config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : ''),
+    merchantAccount: typeof config.clientId === 'string'
+      ? parseInt(config.clientId, 10)
+      : config.clientId,
+    basicAuth: '',
+  };
+
+  checkout.openModal({
+    purchaseInfo,
+    config: checkoutConfig,
+    callBacks: {
+      onPaymentSuccess: (data: any) => {
+        config.onSuccess(data);
+        checkout.closePopUp();
+      },
+      onPaymentFailure: () => {
+        config.onClose();
+      },
+      onClose: () => {
+        config.onClose();
+      },
+    },
   });
 }
 
