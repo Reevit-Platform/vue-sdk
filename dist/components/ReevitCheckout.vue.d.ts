@@ -1,4 +1,4 @@
-import { ReevitTheme } from '../../../core/dist/index.d.ts';
+import { ReevitTheme } from '../../../core/src/index.ts';
 type __VLS_Props = {
     publicKey: string;
     amount: number;
@@ -10,6 +10,8 @@ type __VLS_Props = {
     paymentMethods?: ('card' | 'mobile_money' | 'bank_transfer')[];
     theme?: ReevitTheme;
     isOpen?: boolean;
+    apiBaseUrl?: string;
+    initialPaymentIntent?: any;
 };
 declare function __VLS_template(): {
     attrs: Partial<{}>;

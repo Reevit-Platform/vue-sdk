@@ -1,149 +1,175 @@
-import { ref as R, watch as D, computed as h, readonly as k, defineComponent as B, createElementBlock as m, openBlock as l, createElementVNode as n, toDisplayString as P, unref as T, Fragment as U, renderList as W, normalizeClass as A, createCommentVNode as C, withModifiers as X, withDirectives as oe, vModelText as ae, createTextVNode as Z, normalizeStyle as ee, onUnmounted as re, renderSlot as Y, createBlock as G, Teleport as se, createVNode as ie } from "vue";
+import { ref as g, watch as O, computed as h, readonly as _, defineComponent as z, createElementBlock as m, openBlock as d, createElementVNode as r, toDisplayString as I, unref as D, Fragment as H, renderList as W, normalizeClass as U, createCommentVNode as E, withModifiers as X, withDirectives as ae, vModelText as oe, createTextVNode as Z, normalizeStyle as ee, onUnmounted as re, renderSlot as Y, createBlock as G, Teleport as se, createVNode as ie } from "vue";
 import { createInitialState as le, ReevitAPIClient as ce, generateReference as ue, detectCountryFromCurrency as de, reevitReducer as me, formatAmount as pe, cn as te, detectNetwork as ye, validatePhone as J, createThemeVariables as ve } from "@reevit/core";
-import { ReevitAPIClient as yt, cn as vt, createReevitClient as ht, detectCountryFromCurrency as bt, detectNetwork as ft, formatAmount as kt, formatPhone as wt, validatePhone as St } from "@reevit/core";
+import { ReevitAPIClient as yt, cn as vt, createReevitClient as ht, detectCountryFromCurrency as ft, detectNetwork as bt, formatAmount as St, formatPhone as Pt, validatePhone as kt } from "@reevit/core";
 function he(e) {
-  const r = e.toLowerCase();
-  return r.includes("paystack") ? "paystack" : r.includes("hubtel") ? "hubtel" : r.includes("flutterwave") ? "flutterwave" : "paystack";
+  const s = e.toLowerCase();
+  return s.includes("paystack") ? "paystack" : s.includes("hubtel") ? "hubtel" : s.includes("flutterwave") ? "flutterwave" : "paystack";
 }
-function be(e, r) {
+function fe(e, s) {
   return {
     id: e.id,
     clientSecret: e.client_secret,
+    pspPublicKey: e.psp_public_key,
     amount: e.amount,
     currency: e.currency,
     status: e.status,
     recommendedPsp: he(e.provider),
-    availableMethods: r.paymentMethods || ["card", "mobile_money"],
+    availableMethods: s.paymentMethods || ["card", "mobile_money"],
+    reference: e.reference || s.reference,
     connectionId: e.connection_id,
     provider: e.provider,
     feeAmount: e.fee_amount,
     feeCurrency: e.fee_currency,
     netAmount: e.net_amount,
-    metadata: r.metadata
+    metadata: s.metadata
   };
 }
-function fe(e) {
-  const { config: r, onSuccess: t, onError: i, onClose: y, onStateChange: c, apiBaseUrl: u } = e, o = R(le()), w = new ce({
-    publicKey: r.publicKey,
+function be(e) {
+  const { config: s, onSuccess: t, onError: c, onClose: y, onStateChange: i, apiBaseUrl: u } = e, a = g(le());
+  if (s.initialPaymentIntent) {
+    const o = s.initialPaymentIntent;
+    a.value = {
+      ...a.value,
+      status: "ready",
+      paymentIntent: o,
+      selectedMethod: o.availableMethods?.length === 1 ? o.availableMethods[0] : null
+    };
+  }
+  const P = new ce({
+    publicKey: s.publicKey,
     baseUrl: u
-  }), p = (s) => {
-    o.value = me(o.value, s);
+  }), p = (o) => {
+    a.value = me(a.value, o);
   };
-  D(
-    () => o.value.status,
-    (s) => {
-      c?.(s);
+  O(
+    () => a.value.status,
+    (o) => {
+      i?.(o);
     }
   );
-  const v = async (s) => {
+  const v = async (o) => {
     p({ type: "INIT_START" });
     try {
-      const a = r.reference || ue(), d = de(r.currency), g = s || r.paymentMethods?.[0] || "card", { data: H, error: z } = await w.createPaymentIntent(
-        { ...r, reference: a },
-        g,
-        d
+      const n = s.reference || ue(), l = de(s.currency), w = o || s.paymentMethods?.[0] || "card", { data: S, error: V } = await P.createPaymentIntent(
+        { ...s, reference: n },
+        w,
+        l
       );
-      if (z) {
-        p({ type: "INIT_ERROR", payload: z }), i?.(z);
+      if (V) {
+        p({ type: "INIT_ERROR", payload: V }), c?.(V);
         return;
       }
-      if (!H) {
+      if (!S) {
         const q = {
           code: "INIT_FAILED",
           message: "No data received from API",
           recoverable: !0
         };
-        p({ type: "INIT_ERROR", payload: q }), i?.(q);
+        p({ type: "INIT_ERROR", payload: q }), c?.(q);
         return;
       }
-      const ne = be(H, { ...r, reference: a });
+      const ne = fe(S, { ...s, reference: n });
       p({ type: "INIT_SUCCESS", payload: ne });
-    } catch (a) {
-      const d = {
+    } catch (n) {
+      const l = {
         code: "INIT_FAILED",
-        message: a instanceof Error ? a.message : "Failed to initialize checkout",
+        message: n instanceof Error ? n.message : "Failed to initialize checkout",
         recoverable: !0,
-        originalError: a
+        originalError: n
       };
-      p({ type: "INIT_ERROR", payload: d }), i?.(d);
+      p({ type: "INIT_ERROR", payload: l }), c?.(l);
     }
-  }, f = (s) => {
-    p({ type: "SELECT_METHOD", payload: s });
-  }, S = async (s) => {
-    if (!(!o.value.paymentIntent || !o.value.selectedMethod)) {
+  }, b = (o) => {
+    p({ type: "SELECT_METHOD", payload: o });
+  }, k = async (o) => {
+    if (!(!a.value.paymentIntent || !a.value.selectedMethod)) {
       p({ type: "PROCESS_START" });
       try {
-        const { data: a, error: d } = await w.confirmPayment(o.value.paymentIntent.id);
-        if (d) {
-          p({ type: "PROCESS_ERROR", payload: d }), i?.(d);
-          return;
+        let n;
+        if (a.value.paymentIntent.clientSecret) {
+          const { data: w, error: S } = await P.confirmPaymentIntent(
+            a.value.paymentIntent.id,
+            a.value.paymentIntent.clientSecret
+          );
+          if (S) {
+            p({ type: "PROCESS_ERROR", payload: S }), c?.(S);
+            return;
+          }
+          n = w;
+        } else {
+          const { data: w, error: S } = await P.confirmPayment(a.value.paymentIntent.id);
+          if (S) {
+            p({ type: "PROCESS_ERROR", payload: S }), c?.(S);
+            return;
+          }
+          n = w;
         }
-        const g = {
-          paymentId: o.value.paymentIntent.id,
-          reference: s.reference || o.value.paymentIntent.metadata?.reference || "",
-          amount: o.value.paymentIntent.amount,
-          currency: o.value.paymentIntent.currency,
-          paymentMethod: o.value.selectedMethod,
-          psp: o.value.paymentIntent.recommendedPsp,
-          pspReference: s.pspReference || a?.provider_ref_id || "",
+        const l = {
+          paymentId: a.value.paymentIntent.id,
+          reference: o.reference || a.value.paymentIntent.reference || a.value.paymentIntent.metadata?.reference || "",
+          amount: a.value.paymentIntent.amount,
+          currency: a.value.paymentIntent.currency,
+          paymentMethod: a.value.selectedMethod,
+          psp: a.value.paymentIntent.recommendedPsp,
+          pspReference: o.pspReference || n?.provider_ref_id || "",
           status: "success",
-          metadata: s
+          metadata: o
         };
-        p({ type: "PROCESS_SUCCESS", payload: g }), t?.(g);
-      } catch (a) {
-        const d = {
+        p({ type: "PROCESS_SUCCESS", payload: l }), t?.(l);
+      } catch (n) {
+        const l = {
           code: "PAYMENT_FAILED",
-          message: a instanceof Error ? a.message : "Payment failed",
+          message: n instanceof Error ? n.message : "Payment failed",
           recoverable: !0,
-          originalError: a
+          originalError: n
         };
-        p({ type: "PROCESS_ERROR", payload: d }), i?.(d);
+        p({ type: "PROCESS_ERROR", payload: l }), c?.(l);
       }
     }
-  }, K = async (s) => {
-    await S(s);
-  }, L = (s) => {
-    p({ type: "PROCESS_ERROR", payload: s }), i?.(s);
-  }, _ = () => {
+  }, R = async (o) => {
+    await k(o);
+  }, L = (o) => {
+    p({ type: "PROCESS_ERROR", payload: o }), c?.(o);
+  }, C = () => {
     p({ type: "RESET" });
-  }, N = async () => {
-    if (o.value.paymentIntent && o.value.status !== "success")
+  }, F = async () => {
+    if (a.value.paymentIntent && a.value.status !== "success")
       try {
-        await w.cancelPaymentIntent(o.value.paymentIntent.id);
+        await P.cancelPaymentIntent(a.value.paymentIntent.id);
       } catch {
       }
     p({ type: "CLOSE" }), y?.();
-  }, E = h(() => o.value.status), j = h(() => o.value.paymentIntent), F = h(() => o.value.selectedMethod), x = h(() => o.value.error), b = h(() => o.value.result), O = h(
-    () => o.value.status === "loading" || o.value.status === "processing"
-  ), I = h(
-    () => o.value.status === "ready" || o.value.status === "method_selected" || o.value.status === "processing"
-  ), M = h(() => o.value.status === "success"), V = h(() => o.value.error?.recoverable ?? !1);
+  }, M = h(() => a.value.status), B = h(() => a.value.paymentIntent), T = h(() => a.value.selectedMethod), j = h(() => a.value.error), f = h(() => a.value.result), A = h(
+    () => a.value.status === "loading" || a.value.status === "processing"
+  ), $ = h(
+    () => a.value.status === "ready" || a.value.status === "method_selected" || a.value.status === "processing"
+  ), N = h(() => a.value.status === "success"), x = h(() => a.value.error?.recoverable ?? !1);
   return {
     // State (readonly refs)
-    status: k(E),
-    paymentIntent: k(j),
-    selectedMethod: k(F),
-    error: k(x),
-    result: k(b),
+    status: _(M),
+    paymentIntent: _(B),
+    selectedMethod: _(T),
+    error: _(j),
+    result: _(f),
     // Actions
     initialize: v,
-    selectMethod: f,
-    processPayment: S,
-    handlePspSuccess: K,
+    selectMethod: b,
+    processPayment: k,
+    handlePspSuccess: R,
     handlePspError: L,
-    reset: _,
-    close: N,
+    reset: C,
+    close: F,
     // Computed
-    isLoading: k(O),
-    isReady: k(I),
-    isComplete: k(M),
-    canRetry: k(V)
+    isLoading: _(A),
+    isReady: _($),
+    isComplete: _(N),
+    canRetry: _(x)
   };
 }
-const ke = { class: "reevit-method-selector" }, we = { class: "reevit-amount-display" }, Se = { class: "reevit-methods-grid" }, _e = ["onClick"], Ce = { class: "reevit-method-icon" }, Pe = { class: "reevit-method-info" }, Ee = { class: "reevit-method-name" }, Ie = { class: "reevit-method-description" }, Me = { class: "reevit-method-radio" }, Re = {
+const Se = { class: "reevit-method-selector" }, Pe = { class: "reevit-amount-display" }, ke = { class: "reevit-methods-grid" }, we = ["onClick"], _e = { class: "reevit-method-icon" }, Ce = { class: "reevit-method-info" }, Ee = { class: "reevit-method-name" }, Ie = { class: "reevit-method-description" }, Re = { class: "reevit-method-radio" }, Me = {
   key: 0,
   class: "reevit-radio-inner"
-}, Te = /* @__PURE__ */ B({
+}, Te = /* @__PURE__ */ z({
   __name: "PaymentMethodSelector",
   props: {
     methods: {},
@@ -152,8 +178,8 @@ const ke = { class: "reevit-method-selector" }, we = { class: "reevit-amount-dis
     currency: {}
   },
   emits: ["select"],
-  setup(e, { emit: r }) {
-    const t = e, i = r, y = h(() => [
+  setup(e, { emit: s }) {
+    const t = e, c = s, y = h(() => [
       {
         id: "card",
         name: "Card",
@@ -172,147 +198,147 @@ const ke = { class: "reevit-method-selector" }, we = { class: "reevit-amount-dis
         description: "Transfer directly from your bank",
         icon: "🏦"
       }
-    ].filter((c) => t.methods.includes(c.id)));
-    return (c, u) => (l(), m("div", ke, [
-      u[0] || (u[0] = n("h3", { class: "reevit-section-title" }, "Select Payment Method", -1)),
-      n("p", we, " Pay " + P(T(pe)(e.amount, e.currency)), 1),
-      n("div", Se, [
-        (l(!0), m(U, null, W(y.value, (o) => (l(), m("button", {
-          key: o.id,
+    ].filter((i) => t.methods.includes(i.id)));
+    return (i, u) => (d(), m("div", Se, [
+      u[0] || (u[0] = r("h3", { class: "reevit-section-title" }, "Select Payment Method", -1)),
+      r("p", Pe, " Pay " + I(D(pe)(e.amount, e.currency)), 1),
+      r("div", ke, [
+        (d(!0), m(H, null, W(y.value, (a) => (d(), m("button", {
+          key: a.id,
           type: "button",
-          class: A(T(te)("reevit-method-card", e.selected === o.id && "reevit-method-card--selected")),
-          onClick: (w) => i("select", o.id)
+          class: U(D(te)("reevit-method-card", e.selected === a.id && "reevit-method-card--selected")),
+          onClick: (P) => c("select", a.id)
         }, [
-          n("span", Ce, P(o.icon), 1),
-          n("div", Pe, [
-            n("span", Ee, P(o.name), 1),
-            n("span", Ie, P(o.description), 1)
+          r("span", _e, I(a.icon), 1),
+          r("div", Ce, [
+            r("span", Ee, I(a.name), 1),
+            r("span", Ie, I(a.description), 1)
           ]),
-          n("div", Me, [
-            e.selected === o.id ? (l(), m("div", Re)) : C("", !0)
+          r("div", Re, [
+            e.selected === a.id ? (d(), m("div", Me)) : E("", !0)
           ])
-        ], 10, _e))), 128))
+        ], 10, we))), 128))
       ])
     ]));
   }
-}), $e = { class: "reevit-form-group" }, Ne = ["disabled"], Fe = { class: "reevit-network-selector" }, Oe = { class: "reevit-networks-grid" }, ge = ["onClick", "disabled"], De = {
+}), $e = { class: "reevit-form-group" }, Ne = ["disabled"], ge = { class: "reevit-network-selector" }, Oe = { class: "reevit-networks-grid" }, De = ["onClick", "disabled"], Ke = {
   key: 0,
   class: "reevit-error-message"
-}, Ae = ["disabled"], Ke = {
+}, Fe = ["disabled"], Ae = {
   key: 0,
   class: "reevit-spinner"
-}, Le = { key: 1 }, je = /* @__PURE__ */ B({
+}, Ue = { key: 1 }, Le = /* @__PURE__ */ z({
   __name: "MobileMoneyForm",
   props: {
     initialPhone: {},
     loading: { type: Boolean }
   },
   emits: ["submit"],
-  setup(e, { emit: r }) {
-    const t = e, i = r, y = R(t.initialPhone || ""), c = R(null), u = R(null);
-    D(y, (p) => {
+  setup(e, { emit: s }) {
+    const t = e, c = s, y = g(t.initialPhone || ""), i = g(null), u = g(null);
+    O(y, (p) => {
       const v = ye(p);
-      v && (c.value = v), u.value && (u.value = null);
+      v && (i.value = v), u.value && (u.value = null);
     });
-    const o = () => {
+    const a = () => {
       if (!J(y.value)) {
         u.value = "Please enter a valid phone number";
         return;
       }
-      if (!c.value) {
+      if (!i.value) {
         u.value = "Please select your mobile network";
         return;
       }
-      i("submit", {
+      c("submit", {
         phone: y.value,
-        network: c.value
+        network: i.value
       });
-    }, w = [
+    }, P = [
       { id: "mtn", name: "MTN", color: "#FFCC00" },
       { id: "vodafone", name: "Vodafone", color: "#E60000" },
       { id: "airteltigo", name: "AirtelTigo", color: "#005596" }
     ];
-    return (p, v) => (l(), m("form", {
+    return (p, v) => (d(), m("form", {
       class: "reevit-momo-form",
-      onSubmit: X(o, ["prevent"])
+      onSubmit: X(a, ["prevent"])
     }, [
-      n("div", $e, [
-        v[1] || (v[1] = n("label", {
+      r("div", $e, [
+        v[1] || (v[1] = r("label", {
           class: "reevit-label",
           for: "reevit-phone"
         }, "Phone Number", -1)),
-        oe(n("input", {
+        ae(r("input", {
           id: "reevit-phone",
-          "onUpdate:modelValue": v[0] || (v[0] = (f) => y.value = f),
+          "onUpdate:modelValue": v[0] || (v[0] = (b) => y.value = b),
           type: "tel",
-          class: A(["reevit-input", { "reevit-input--error": u.value && !T(J)(y.value) }]),
+          class: U(["reevit-input", { "reevit-input--error": u.value && !D(J)(y.value) }]),
           placeholder: "e.g. 024 123 4567",
           disabled: e.loading,
           autocomplete: "tel"
         }, null, 10, Ne), [
-          [ae, y.value]
+          [oe, y.value]
         ])
       ]),
-      n("div", Fe, [
-        v[2] || (v[2] = n("label", { class: "reevit-label" }, "Select Network", -1)),
-        n("div", Oe, [
-          (l(), m(U, null, W(w, (f) => n("button", {
-            key: f.id,
+      r("div", ge, [
+        v[2] || (v[2] = r("label", { class: "reevit-label" }, "Select Network", -1)),
+        r("div", Oe, [
+          (d(), m(H, null, W(P, (b) => r("button", {
+            key: b.id,
             type: "button",
-            class: A(T(te)("reevit-network-btn", c.value === f.id && "reevit-network-btn--selected")),
-            onClick: (S) => c.value = f.id,
+            class: U(D(te)("reevit-network-btn", i.value === b.id && "reevit-network-btn--selected")),
+            onClick: (k) => i.value = b.id,
             disabled: e.loading
           }, [
-            n("div", {
+            r("div", {
               class: "reevit-network-dot",
-              style: ee({ backgroundColor: f.color })
+              style: ee({ backgroundColor: b.color })
             }, null, 4),
-            Z(" " + P(f.name), 1)
-          ], 10, ge)), 64))
+            Z(" " + I(b.name), 1)
+          ], 10, De)), 64))
         ])
       ]),
-      u.value ? (l(), m("p", De, P(u.value), 1)) : C("", !0),
-      n("button", {
+      u.value ? (d(), m("p", Ke, I(u.value), 1)) : E("", !0),
+      r("button", {
         type: "submit",
         class: "reevit-submit-btn",
         disabled: e.loading || !y.value
       }, [
-        e.loading ? (l(), m("span", Ke)) : (l(), m("span", Le, "Continue"))
-      ], 8, Ae),
-      v[3] || (v[3] = n("p", { class: "reevit-secure-text" }, " 🔒 Secure mobile money payment via Reevit ", -1))
+        e.loading ? (d(), m("span", Ae)) : (d(), m("span", Ue, "Continue"))
+      ], 8, Fe),
+      v[3] || (v[3] = r("p", { class: "reevit-secure-text" }, " 🔒 Secure mobile money payment via Reevit ", -1))
     ], 32));
   }
 }), Q = /* @__PURE__ */ new Map();
-function $(e, r) {
-  const t = Q.get(r);
+function K(e, s) {
+  const t = Q.get(s);
   if (t) return t;
-  const i = new Promise((y, c) => {
-    if (document.getElementById(r)) {
+  const c = new Promise((y, i) => {
+    if (document.getElementById(s)) {
       y();
       return;
     }
     const u = document.createElement("script");
-    u.id = r, u.src = e, u.async = !0, u.onload = () => y(), u.onerror = () => c(new Error(`Failed to load ${r} script`)), document.head.appendChild(u);
+    u.id = s, u.src = e, u.async = !0, u.onload = () => y(), u.onerror = () => i(new Error(`Failed to load ${s} script`)), document.head.appendChild(u);
   });
-  return Q.set(r, i), i;
-}
-function xe() {
-  return $("https://js.paystack.co/v1/inline.js", "paystack-script");
-}
-function Ve() {
-  return $("https://checkout.hubtel.com/js/hubtel-checkout.js", "hubtel-script");
-}
-function ze() {
-  return $("https://checkout.flutterwave.com/v3.js", "flutterwave-script");
+  return Q.set(s, c), c;
 }
 function Be() {
-  return $("https://js.stripe.com/v3/", "stripe-script");
+  return K("https://js.paystack.co/v1/inline.js", "paystack-script");
 }
-function Ue() {
-  return $("https://sdk.monnify.com/plugin/monnify.js", "monnify-script");
+function je() {
+  return K("https://checkout.hubtel.com/js/hubtel-checkout.js", "hubtel-script");
+}
+function xe() {
+  return K("https://checkout.flutterwave.com/v3.js", "flutterwave-script");
+}
+function Ve() {
+  return K("https://js.stripe.com/v3/", "stripe-script");
+}
+function ze() {
+  return K("https://sdk.monnify.com/plugin/monnify.js", "monnify-script");
 }
 async function He(e) {
-  if (await xe(), !window.PaystackPop)
+  if (await Be(), !window.PaystackPop)
     throw new Error("Paystack script not loaded");
   window.PaystackPop.setup({
     key: e.key,
@@ -326,7 +352,7 @@ async function He(e) {
   }).openIframe();
 }
 async function qe(e) {
-  if (await Ve(), !window.HubtelCheckout)
+  if (await je(), !window.HubtelCheckout)
     throw new Error("Hubtel script not loaded");
   window.HubtelCheckout.initPay({
     clientId: e.clientId,
@@ -340,7 +366,7 @@ async function qe(e) {
   });
 }
 async function Ye(e) {
-  if (await ze(), !window.FlutterwaveCheckout)
+  if (await xe(), !window.FlutterwaveCheckout)
     throw new Error("Flutterwave script not loaded");
   window.FlutterwaveCheckout({
     public_key: e.public_key,
@@ -355,11 +381,11 @@ async function Ye(e) {
   });
 }
 async function Ge(e) {
-  if (await Be(), !window.Stripe)
+  if (await Ve(), !window.Stripe)
     throw new Error("Stripe.js not loaded");
   return window.Stripe(e);
 }
-async function lt(e) {
+async function ut(e) {
   const t = await (await Ge(e.publishableKey)).confirmPayment({
     elements: e.elements,
     clientSecret: e.clientSecret,
@@ -370,8 +396,8 @@ async function lt(e) {
     status: t.paymentIntent.status
   });
 }
-async function ct(e) {
-  if (await Ue(), !window.MonnifySDK)
+async function Je(e) {
+  if (await ze(), !window.MonnifySDK)
     throw new Error("Monnify SDK not loaded");
   window.MonnifySDK.initialize({
     amount: e.amount,
@@ -385,20 +411,20 @@ async function ct(e) {
     paymentDescription: e.paymentDescription || "Payment",
     isTestMode: e.isTestMode ?? !1,
     metadata: e.metadata,
-    onComplete: (r) => {
-      r.status === "SUCCESS" ? e.onSuccess({
-        transactionReference: r.transactionReference,
-        paymentReference: r.paymentReference,
-        ...r
-      }) : e.onError?.({ message: r.message || "Payment failed" });
+    onComplete: (s) => {
+      s.status === "SUCCESS" ? e.onSuccess({
+        transactionReference: s.transactionReference,
+        paymentReference: s.paymentReference,
+        ...s
+      }) : e.onError?.({ message: s.message || "Payment failed" });
     },
     onClose: e.onClose
   });
 }
-async function ut(e, r) {
+async function Qe(e, s) {
   e.onInitiated();
   try {
-    const t = await fetch(r, {
+    const t = await fetch(s, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -409,42 +435,42 @@ async function ut(e, r) {
       })
     });
     if (!t.ok) {
-      const c = (await t.json().catch(() => ({}))).message || "Failed to initiate M-Pesa payment";
-      return e.onError({ message: c }), { status: "failed", message: c };
+      const i = (await t.json().catch(() => ({}))).message || "Failed to initiate M-Pesa payment";
+      return e.onError({ message: i }), { status: "failed", message: i };
     }
-    const i = await t.json();
+    const c = await t.json();
     return {
       status: "initiated",
       message: "Please check your phone and enter your M-Pesa PIN to complete the payment.",
-      transactionId: i.checkout_request_id || i.transaction_id
+      transactionId: c.checkout_request_id || c.transaction_id
     };
   } catch (t) {
-    const i = t instanceof Error ? t.message : "Network error";
-    return e.onError({ message: i }), { status: "failed", message: i };
+    const c = t instanceof Error ? t.message : "Network error";
+    return e.onError({ message: c }), { status: "failed", message: c };
   }
 }
-const Je = ["disabled"], Qe = {
+const We = ["disabled"], Xe = {
   key: 0,
   class: "reevit-spinner"
-}, We = { class: "reevit-modal-body" }, Xe = {
+}, Ze = { class: "reevit-modal-body" }, et = {
   key: 0,
   class: "reevit-loading-state"
-}, Ze = {
-  key: 1,
-  class: "reevit-error-state"
-}, et = {
-  key: 2,
-  class: "reevit-success-state"
 }, tt = {
   key: 1,
-  class: "reevit-method-form-container"
+  class: "reevit-error-state"
 }, nt = {
   key: 2,
+  class: "reevit-success-state"
+}, at = {
+  key: 1,
+  class: "reevit-method-form-container"
+}, ot = {
+  key: 2,
   class: "reevit-card-info"
-}, ot = ["disabled"], at = {
+}, rt = ["disabled"], st = {
   key: 0,
   class: "reevit-spinner"
-}, rt = { key: 1 }, dt = /* @__PURE__ */ B({
+}, it = { key: 1 }, dt = /* @__PURE__ */ z({
   __name: "ReevitCheckout",
   props: {
     publicKey: {},
@@ -456,23 +482,25 @@ const Je = ["disabled"], Qe = {
     metadata: {},
     paymentMethods: {},
     theme: {},
-    isOpen: { type: Boolean }
+    isOpen: { type: Boolean },
+    apiBaseUrl: {},
+    initialPaymentIntent: {}
   },
   emits: ["success", "error", "close"],
-  setup(e, { emit: r }) {
-    const t = e, i = r, {
+  setup(e, { emit: s }) {
+    const t = e, c = s, {
       status: y,
-      paymentIntent: c,
+      paymentIntent: i,
       selectedMethod: u,
-      error: o,
-      isLoading: w,
+      error: a,
+      isLoading: P,
       isReady: p,
       initialize: v,
-      selectMethod: f,
-      handlePspSuccess: S,
-      handlePspError: K,
+      selectMethod: b,
+      handlePspSuccess: k,
+      handlePspError: R,
       close: L
-    } = fe({
+    } = be({
       config: {
         publicKey: t.publicKey,
         amount: t.amount,
@@ -481,190 +509,238 @@ const Je = ["disabled"], Qe = {
         phone: t.phone,
         reference: t.reference,
         metadata: t.metadata,
-        paymentMethods: t.paymentMethods
+        paymentMethods: t.paymentMethods,
+        initialPaymentIntent: t.initialPaymentIntent
       },
-      onSuccess: (s) => i("success", s),
-      onError: (s) => i("error", s),
-      onClose: () => i("close")
-    }), _ = R(t.isOpen ?? !1);
-    D(() => t.isOpen, (s) => {
-      s !== void 0 && (_.value = s);
+      apiBaseUrl: t.apiBaseUrl,
+      onSuccess: (o) => c("success", o),
+      onError: (o) => c("error", o),
+      onClose: () => c("close")
+    }), C = g(t.isOpen ?? !1);
+    O(() => t.isOpen, (o) => {
+      o !== void 0 && (C.value = o);
     });
-    const N = () => {
-      _.value = !0, c.value || v();
-    }, E = () => {
-      _.value = !1, L();
-    }, j = (s) => {
-      f(s);
-    }, F = async (s) => {
-      if (!c.value) return;
-      const a = c.value.recommendedPsp;
+    const F = () => {
+      C.value = !0, !i.value && y.value === "idle" && v();
+    };
+    O([C, i, u], ([o, n, l]) => {
+      o && n && l && l === "card" && T(null);
+    });
+    const M = () => {
+      C.value = !1, L();
+    }, B = (o) => {
+      b(o);
+    }, T = async (o) => {
+      if (!i.value) return;
+      const n = i.value.recommendedPsp;
       try {
-        a === "paystack" ? await He({
-          key: t.publicKey,
-          email: t.email || "",
-          amount: t.amount,
-          currency: t.currency,
-          ref: c.value.id,
-          onSuccess: (d) => S(d),
-          onClose: () => {
-          }
-        }) : a === "hubtel" ? await qe({
-          clientId: t.publicKey,
-          purchaseDescription: `Payment for ${t.amount} ${t.currency}`,
-          amount: t.amount,
-          customerPhone: s?.phone || t.phone,
-          customerEmail: t.email,
-          onSuccess: (d) => S(d),
-          onClose: () => {
-          }
-        }) : a === "flutterwave" && await Ye({
-          public_key: t.publicKey,
-          tx_ref: c.value.id,
-          amount: t.amount,
-          currency: t.currency,
-          customer: {
+        if (n === "paystack")
+          await He({
+            key: t.publicKey,
             email: t.email || "",
-            phone_number: s?.phone || t.phone
-          },
-          callback: (d) => S(d),
-          onclose: () => {
-          }
+            amount: t.amount,
+            currency: t.currency,
+            ref: i.value.id,
+            onSuccess: (l) => k(l),
+            onClose: () => {
+            }
+          });
+        else if (n === "hubtel")
+          await qe({
+            clientId: t.publicKey,
+            purchaseDescription: `Payment for ${t.amount} ${t.currency}`,
+            amount: t.amount,
+            customerPhone: o?.phone || t.phone,
+            customerEmail: t.email,
+            onSuccess: (l) => k(l),
+            onClose: () => {
+            }
+          });
+        else if (n === "flutterwave")
+          await Ye({
+            public_key: t.publicKey,
+            tx_ref: i.value.id,
+            amount: t.amount,
+            currency: t.currency,
+            customer: {
+              email: t.email || "",
+              phone_number: o?.phone || t.phone
+            },
+            callback: (l) => k(l),
+            onclose: () => {
+            }
+          });
+        else if (n === "monnify")
+          await Je({
+            apiKey: i.value.pspPublicKey || t.publicKey,
+            contractCode: t.metadata?.contract_code || t.publicKey,
+            amount: t.amount,
+            currency: t.currency,
+            reference: i.value.reference || i.value.id,
+            customerName: t.metadata?.customer_name || t.email || "",
+            customerEmail: t.email || "",
+            customerPhone: o?.phone || t.phone,
+            metadata: t.metadata,
+            onSuccess: (l) => k(l),
+            onClose: () => {
+            }
+          });
+        else if (n === "mpesa") {
+          const l = `${t.apiBaseUrl || "https://api.reevit.io"}/v1/payments/${i.value.id}/mpesa`;
+          await Qe({
+            phoneNumber: o?.phone || t.phone || "",
+            amount: t.amount,
+            reference: i.value.reference || i.value.id,
+            description: `Payment ${i.value.reference || ""}`,
+            onInitiated: () => {
+            },
+            onSuccess: (w) => k(w),
+            onError: (w) => R({ code: "MPESA_ERROR", message: w.message })
+          }, l);
+        } else R(n === "stripe" ? {
+          code: "STRIPE_NOT_IMPLEMENTED",
+          message: "Stripe integration requires custom Elements setup. Please use the React SDK or implement custom Stripe Elements."
+        } : {
+          code: "UNSUPPORTED_PSP",
+          message: `Payment provider "${n}" is not supported in this checkout.`
         });
-      } catch (d) {
-        K({
+      } catch (l) {
+        R({
           code: "BRIDGE_ERROR",
-          message: d instanceof Error ? d.message : "Failed to open payment gateway"
+          message: l instanceof Error ? l.message : "Failed to open payment gateway"
         });
       }
-    }, x = h(() => ve(t.theme || {}));
-    D(_, (s) => {
-      s ? document.body.style.overflow = "hidden" : document.body.style.overflow = "";
+    }, j = h(() => ve(t.theme || {}));
+    O(C, (o) => {
+      o ? document.body.style.overflow = "hidden" : document.body.style.overflow = "";
     }), re(() => {
       document.body.style.overflow = "";
     });
-    const b = h(() => y.value), O = h(() => o.value), I = h(() => u.value), M = h(() => w.value), V = h(() => p.value);
-    return (s, a) => (l(), m("div", {
+    const f = h(() => y.value), A = h(() => a.value), $ = h(() => u.value), N = h(() => P.value), x = h(() => p.value);
+    return (o, n) => (d(), m("div", {
       class: "reevit-sdk-container",
-      style: ee(x.value)
+      style: ee(j.value)
     }, [
-      Y(s.$slots, "default", {
-        open: N,
-        isLoading: M.value
+      Y(o.$slots, "default", {
+        open: F,
+        isLoading: N.value
       }, () => [
-        n("button", {
+        r("button", {
           type: "button",
           class: "reevit-pay-button",
-          onClick: N,
-          disabled: M.value
+          onClick: F,
+          disabled: N.value
         }, [
-          M.value ? (l(), m("span", Qe)) : Y(s.$slots, "button-text", { key: 1 }, () => [
-            a[1] || (a[1] = Z("Pay Now", -1))
+          N.value ? (d(), m("span", Xe)) : Y(o.$slots, "button-text", { key: 1 }, () => [
+            n[1] || (n[1] = Z("Pay Now", -1))
           ])
-        ], 8, Je)
+        ], 8, We)
       ]),
-      (l(), G(se, { to: "body" }, [
-        _.value ? (l(), m("div", {
+      (d(), G(se, { to: "body" }, [
+        C.value ? (d(), m("div", {
           key: 0,
           class: "reevit-modal-overlay",
-          onClick: X(E, ["self"])
+          onClick: X(M, ["self"])
         }, [
-          n("div", {
-            class: A(["reevit-modal-content", { "reevit-modal--dark": t.theme?.darkMode }])
+          r("div", {
+            class: U(["reevit-modal-content", { "reevit-modal--dark": t.theme?.darkMode }])
           }, [
-            n("button", {
+            r("button", {
               class: "reevit-modal-close",
-              onClick: E,
+              onClick: M,
               "aria-label": "Close"
             }, " × "),
-            a[9] || (a[9] = n("div", { class: "reevit-modal-header" }, [
-              n("h2", { class: "reevit-modal-title" }, "Reevit Checkout"),
-              n("p", { class: "reevit-modal-subtitle" }, "Secure payment powered by Reevit")
+            n[9] || (n[9] = r("div", { class: "reevit-modal-header" }, [
+              r("img", {
+                src: "https://i.imgur.com/bzUR5Lm.png",
+                alt: "Reevit",
+                class: "reevit-modal__logo"
+              })
             ], -1)),
-            n("div", We, [
-              b.value === "loading" ? (l(), m("div", Xe, [...a[2] || (a[2] = [
-                n("div", { class: "reevit-spinner reevit-spinner--large" }, null, -1),
-                n("p", null, "Initializing payment...", -1)
-              ])])) : b.value === "failed" && O.value ? (l(), m("div", Ze, [
-                a[3] || (a[3] = n("div", { class: "reevit-error-icon" }, "⚠️", -1)),
-                a[4] || (a[4] = n("h3", null, "Payment Failed", -1)),
-                n("p", null, P(O.value.message), 1),
-                n("button", {
+            r("div", Ze, [
+              f.value === "loading" ? (d(), m("div", et, [...n[2] || (n[2] = [
+                r("div", { class: "reevit-spinner reevit-spinner--large" }, null, -1),
+                r("p", null, "Initializing payment...", -1)
+              ])])) : f.value === "failed" && A.value ? (d(), m("div", tt, [
+                n[3] || (n[3] = r("div", { class: "reevit-error-icon" }, "⚠️", -1)),
+                n[4] || (n[4] = r("h3", null, "Payment Failed", -1)),
+                r("p", null, I(A.value.message), 1),
+                r("button", {
                   class: "reevit-retry-btn",
-                  onClick: a[0] || (a[0] = (d) => T(v)())
+                  onClick: n[0] || (n[0] = (l) => D(v)())
                 }, "Retry")
-              ])) : b.value === "success" ? (l(), m("div", et, [
-                a[5] || (a[5] = n("div", { class: "reevit-success-icon" }, "✅", -1)),
-                a[6] || (a[6] = n("h3", null, "Payment Successful", -1)),
-                a[7] || (a[7] = n("p", null, "Thank you for your payment.", -1)),
-                n("button", {
+              ])) : f.value === "success" ? (d(), m("div", nt, [
+                n[5] || (n[5] = r("div", { class: "reevit-success-icon" }, "✅", -1)),
+                n[6] || (n[6] = r("h3", null, "Payment Successful", -1)),
+                n[7] || (n[7] = r("p", null, "Thank you for your payment.", -1)),
+                r("button", {
                   class: "reevit-done-btn",
-                  onClick: E
+                  onClick: M
                 }, "Done")
-              ])) : V.value ? (l(), m(U, { key: 3 }, [
-                b.value === "ready" || b.value === "method_selected" || b.value === "processing" ? (l(), G(Te, {
+              ])) : x.value ? (d(), m(H, { key: 3 }, [
+                f.value === "ready" || f.value === "method_selected" || f.value === "processing" ? (d(), G(Te, {
                   key: 0,
                   methods: t.paymentMethods || ["card", "mobile_money"],
-                  selected: I.value,
+                  selected: $.value,
                   amount: t.amount,
                   currency: t.currency,
-                  onSelect: j
-                }, null, 8, ["methods", "selected", "amount", "currency"])) : C("", !0),
-                (b.value === "method_selected" || b.value === "processing") && I.value === "mobile_money" ? (l(), m("div", tt, [
-                  ie(je, {
+                  onSelect: B
+                }, null, 8, ["methods", "selected", "amount", "currency"])) : E("", !0),
+                (f.value === "method_selected" || f.value === "processing") && $.value === "mobile_money" ? (d(), m("div", at, [
+                  ie(Le, {
                     "initial-phone": t.phone,
-                    loading: b.value === "processing",
-                    onSubmit: F
+                    loading: f.value === "processing",
+                    onSubmit: T
                   }, null, 8, ["initial-phone", "loading"])
-                ])) : C("", !0),
-                (b.value === "method_selected" || b.value === "processing") && I.value === "card" ? (l(), m("div", nt, [
-                  a[8] || (a[8] = n("p", { class: "reevit-info-text" }, "You will be redirected to our secure payment partner to complete your card payment.", -1)),
-                  n("button", {
+                ])) : E("", !0),
+                (f.value === "method_selected" || f.value === "processing") && $.value === "card" ? (d(), m("div", ot, [
+                  n[8] || (n[8] = r("p", { class: "reevit-info-text" }, "You will be redirected to our secure payment partner to complete your card payment.", -1)),
+                  r("button", {
                     class: "reevit-submit-btn",
-                    onClick: F,
-                    disabled: b.value === "processing"
+                    onClick: T,
+                    disabled: f.value === "processing"
                   }, [
-                    b.value === "processing" ? (l(), m("span", at)) : (l(), m("span", rt, "Proceed to Card Payment"))
-                  ], 8, ot)
-                ])) : C("", !0)
-              ], 64)) : C("", !0)
+                    f.value === "processing" ? (d(), m("span", st)) : (d(), m("span", it, "Proceed to Card Payment"))
+                  ], 8, rt)
+                ])) : E("", !0)
+              ], 64)) : E("", !0)
             ]),
-            a[10] || (a[10] = n("div", { class: "reevit-modal-footer" }, [
-              n("div", { class: "reevit-trust-badges" }, [
-                n("span", null, "PCI DSS Compliant"),
-                n("span", null, "•"),
-                n("span", null, "SSL Secure")
+            n[10] || (n[10] = r("div", { class: "reevit-modal-footer" }, [
+              r("div", { class: "reevit-trust-badges" }, [
+                r("span", null, "PCI DSS Compliant"),
+                r("span", null, "•"),
+                r("span", null, "SSL Secure")
               ])
             ], -1))
           ], 2)
-        ])) : C("", !0)
+        ])) : E("", !0)
       ]))
     ], 4));
   }
 });
 export {
-  je as MobileMoneyForm,
+  Le as MobileMoneyForm,
   Te as PaymentMethodSelector,
   yt as ReevitAPIClient,
   dt as ReevitCheckout,
   vt as cn,
-  lt as confirmStripePayment,
+  ut as confirmStripePayment,
   ht as createReevitClient,
   Ge as createStripeInstance,
-  bt as detectCountryFromCurrency,
-  ft as detectNetwork,
-  kt as formatAmount,
-  wt as formatPhone,
-  ut as initiateMPesaSTKPush,
-  ze as loadFlutterwaveScript,
-  Ve as loadHubtelScript,
-  Ue as loadMonnifyScript,
-  xe as loadPaystackScript,
-  Be as loadStripeScript,
+  ft as detectCountryFromCurrency,
+  bt as detectNetwork,
+  St as formatAmount,
+  Pt as formatPhone,
+  Qe as initiateMPesaSTKPush,
+  xe as loadFlutterwaveScript,
+  je as loadHubtelScript,
+  ze as loadMonnifyScript,
+  Be as loadPaystackScript,
+  Ve as loadStripeScript,
   Ye as openFlutterwaveModal,
   qe as openHubtelPopup,
-  ct as openMonnifyModal,
+  Je as openMonnifyModal,
   He as openPaystackPopup,
-  fe as useReevit,
-  St as validatePhone
+  be as useReevit,
+  kt as validatePhone
 };

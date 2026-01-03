@@ -1,4 +1,4 @@
-import { PaymentMethod } from '../../../core/dist/index.d.ts';
+import { PaymentMethod } from '../../../core/src/index.ts';
 type __VLS_Props = {
     methods: PaymentMethod[];
     selected: PaymentMethod | null;

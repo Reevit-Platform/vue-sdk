@@ -1,4 +1,4 @@
-import { MobileMoneyFormData } from '../../../core/dist/index.d.ts';
+import { MobileMoneyFormData } from '../../../core/src/index.ts';
 type __VLS_Props = {
     initialPhone?: string;
     loading?: boolean;

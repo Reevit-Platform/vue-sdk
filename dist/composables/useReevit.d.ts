@@ -1,4 +1,4 @@
-import { ReevitCheckoutConfig, CheckoutState, PaymentMethod, PaymentResult, PaymentError, PSPType } from '../../../core/dist/index.d.ts';
+import { ReevitCheckoutConfig, CheckoutState, PaymentMethod, PaymentResult, PaymentError, PSPType } from '../../../core/src/index.ts';
 interface UseReevitOptions {
     config: ReevitCheckoutConfig;
     onSuccess?: (result: PaymentResult) => void;
@@ -12,11 +12,13 @@ export declare function useReevit(options: UseReevitOptions): {
     paymentIntent: Readonly<import('vue').Ref<{
         readonly id: string;
         readonly clientSecret: string;
+        readonly pspPublicKey?: string | undefined;
         readonly amount: number;
         readonly currency: string;
         readonly status: "pending" | "processing" | "succeeded" | "failed" | "cancelled";
         readonly recommendedPsp: PSPType;
         readonly availableMethods: readonly PaymentMethod[];
+        readonly reference?: string | undefined;
         readonly connectionId?: string | undefined;
         readonly provider?: string | undefined;
         readonly feeAmount?: number | undefined;
@@ -28,11 +30,13 @@ export declare function useReevit(options: UseReevitOptions): {
     } | null, {
         readonly id: string;
         readonly clientSecret: string;
+        readonly pspPublicKey?: string | undefined;
         readonly amount: number;
         readonly currency: string;
         readonly status: "pending" | "processing" | "succeeded" | "failed" | "cancelled";
         readonly recommendedPsp: PSPType;
         readonly availableMethods: readonly PaymentMethod[];
+        readonly reference?: string | undefined;
         readonly connectionId?: string | undefined;
         readonly provider?: string | undefined;
         readonly feeAmount?: number | undefined;
@@ -72,6 +76,9 @@ export declare function useReevit(options: UseReevitOptions): {
         readonly metadata?: {
             readonly [x: string]: Readonly<unknown>;
         } | undefined;
+        readonly source?: import('../../../core/src/index.ts').PaymentSource | undefined;
+        readonly sourceId?: string | undefined;
+        readonly sourceDescription?: string | undefined;
     } | null, {
         readonly paymentId: string;
         readonly reference: string;
@@ -84,6 +91,9 @@ export declare function useReevit(options: UseReevitOptions): {
         readonly metadata?: {
             readonly [x: string]: Readonly<unknown>;
         } | undefined;
+        readonly source?: import('../../../core/src/index.ts').PaymentSource | undefined;
+        readonly sourceId?: string | undefined;
+        readonly sourceDescription?: string | undefined;
     } | null>>;
     initialize: (method?: PaymentMethod) => Promise<void>;
     selectMethod: (method: PaymentMethod) => void;

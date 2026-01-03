@@ -5,7 +5,15 @@ import { createThemeVariables } from '@reevit/core';
 import type { ReevitTheme } from '@reevit/core';
 import PaymentMethodSelector from './PaymentMethodSelector.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
-import { openPaystackPopup, openHubtelPopup, openFlutterwaveModal } from '../bridges';
+import { 
+  openPaystackPopup, 
+  openHubtelPopup, 
+  openFlutterwaveModal,
+  openMonnifyModal,
+  initiateMPesaSTKPush,
+  createStripeInstance,
+  confirmStripePayment,
+} from '../bridges';
 
 const props = defineProps<{
   publicKey: string;
@@ -128,6 +136,42 @@ const handleProcessPayment = async (data: any) => {
         callback: (res) => handlePspSuccess(res),
         onclose: () => {},
       });
+    } else if (psp === 'monnify') {
+      await openMonnifyModal({
+        apiKey: paymentIntent.value.pspPublicKey || props.publicKey,
+        contractCode: (props.metadata?.contract_code as string) || props.publicKey,
+        amount: props.amount,
+        currency: props.currency,
+        reference: paymentIntent.value.reference || paymentIntent.value.id,
+        customerName: (props.metadata?.customer_name as string) || props.email || '',
+        customerEmail: props.email || '',
+        customerPhone: data?.phone || props.phone,
+        metadata: props.metadata,
+        onSuccess: (res) => handlePspSuccess(res),
+        onClose: () => {},
+      });
+    } else if (psp === 'mpesa') {
+      const apiEndpoint = `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${paymentIntent.value.id}/mpesa`;
+      await initiateMPesaSTKPush({
+        phoneNumber: data?.phone || props.phone || '',
+        amount: props.amount,
+        reference: paymentIntent.value.reference || paymentIntent.value.id,
+        description: `Payment ${paymentIntent.value.reference || ''}`,
+        onInitiated: () => {},
+        onSuccess: (res) => handlePspSuccess(res),
+        onError: (err) => handlePspError({ code: 'MPESA_ERROR', message: err.message }),
+      }, apiEndpoint);
+    } else if (psp === 'stripe') {
+      // Stripe requires Elements - for now, show a message that it needs custom integration
+      handlePspError({
+        code: 'STRIPE_NOT_IMPLEMENTED',
+        message: 'Stripe integration requires custom Elements setup. Please use the React SDK or implement custom Stripe Elements.',
+      });
+    } else {
+      handlePspError({
+        code: 'UNSUPPORTED_PSP',
+        message: `Payment provider "${psp}" is not supported in this checkout.`,
+      });
     }
   } catch (err) {
     handlePspError({
@@ -138,6 +182,7 @@ const handleProcessPayment = async (data: any) => {
 };
 
 const themeVars = computed(() => createThemeVariables(props.theme || {}));
+
 
 // Lock scroll when open
 watch(isModalVisible, (val: any) => {
