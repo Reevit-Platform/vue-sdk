@@ -87,7 +87,7 @@ export function loadPaystackScript(): Promise<void> {
  * Loads the Hubtel checkout script
  */
 export function loadHubtelScript(): Promise<void> {
-  return loadScript('https://checkout.hubtel.com/js/hubtel-checkout.js', 'hubtel-script');
+  return loadScript('https://checkout-v3.hubtel.com/js/checkout.js', 'hubtel-script');
 }
 
 /**
