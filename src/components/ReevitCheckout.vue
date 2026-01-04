@@ -122,7 +122,7 @@ const handleProcessPayment = async (data: any) => {
         amount: props.amount,
         customerPhone: data?.phone || props.phone,
         customerEmail: props.email,
-        basicAuth: intent.pspCredentials?.basicAuth as string,
+        hubtelSessionToken: intent.id, // Pass payment ID to fetch session token
         onSuccess: (res) => handlePspSuccess(res),
         onClose: () => {},
       });

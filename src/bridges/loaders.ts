@@ -132,6 +132,7 @@ export interface HubtelConfig {
   callbackUrl?: string;
   customerPhone?: string;
   customerEmail?: string;
+  hubtelSessionToken?: string;
   basicAuth?: string;
   onSuccess: (response: Record<string, unknown>) => void;
   onClose: () => void;
@@ -236,13 +237,16 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
     clientReference: `hubtel_${Date.now()}`,
   };
 
+  // Use session token if provided, otherwise fall back to basicAuth
+  const authValue = config.hubtelSessionToken || config.basicAuth || '';
+
   const checkoutConfig = {
     branding: 'enabled' as const,
     callbackUrl: config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : ''),
     merchantAccount: typeof config.clientId === 'string'
       ? parseInt(config.clientId, 10)
       : config.clientId,
-    basicAuth: config.basicAuth || '',
+    basicAuth: authValue,
   };
 
   checkout.openModal({
