@@ -39,6 +39,9 @@ function mapProviderToPsp(provider: string): PSPType {
   if (providerLower.includes('paystack')) return 'paystack';
   if (providerLower.includes('hubtel')) return 'hubtel';
   if (providerLower.includes('flutterwave')) return 'flutterwave';
+  if (providerLower.includes('stripe')) return 'stripe';
+  if (providerLower.includes('monnify')) return 'monnify';
+  if (providerLower.includes('mpesa') || providerLower.includes('m-pesa')) return 'mpesa';
   return 'paystack';
 }
 
