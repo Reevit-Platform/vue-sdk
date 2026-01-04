@@ -8,30 +8,69 @@ const props = defineProps<{
   selected: PaymentMethod | null;
   amount: number;
   currency: string;
+  provider?: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'select', method: PaymentMethod): void;
 }>();
 
+// Human-readable PSP names
+const pspNames: Record<string, string> = {
+  hubtel: 'Hubtel',
+  paystack: 'Paystack',
+  flutterwave: 'Flutterwave',
+  monnify: 'Monnify',
+  mpesa: 'M-Pesa',
+  stripe: 'Stripe',
+};
+
+const getMethodName = (method: PaymentMethod): string => {
+  // For Hubtel, show "Pay with Hubtel" for mobile_money
+  if (props.provider?.toLowerCase().includes('hubtel') && method === 'mobile_money') {
+    return `Pay with ${pspNames[props.provider.toLowerCase()] || 'Hubtel'}`;
+  }
+
+  const names: Record<PaymentMethod, string> = {
+    card: 'Card',
+    mobile_money: 'Mobile Money',
+    bank_transfer: 'Bank Transfer',
+  };
+  return names[method];
+};
+
+const getMethodDescription = (method: PaymentMethod): string => {
+  // Hubtel handles everything internally
+  if (props.provider?.toLowerCase().includes('hubtel')) {
+    return 'Card, Mobile Money, and Bank Transfer';
+  }
+
+  const descriptions: Record<PaymentMethod, string> = {
+    card: 'Visa, Mastercard, Maestro',
+    mobile_money: 'MTN, Vodafone, AirtelTigo',
+    bank_transfer: 'Transfer directly from your bank',
+  };
+  return descriptions[method];
+};
+
 const availableMethods = computed(() => {
   return [
     {
       id: 'card' as const,
-      name: 'Card',
-      description: 'Visa, Mastercard, Maestro',
+      name: getMethodName('card'),
+      description: getMethodDescription('card'),
       icon: '💳',
     },
     {
       id: 'mobile_money' as const,
-      name: 'Mobile Money',
-      description: 'MTN, Vodafone, AirtelTigo',
+      name: getMethodName('mobile_money'),
+      description: getMethodDescription('mobile_money'),
       icon: '📱',
     },
     {
       id: 'bank_transfer' as const,
-      name: 'Bank Transfer',
-      description: 'Transfer directly from your bank',
+      name: getMethodName('bank_transfer'),
+      description: getMethodDescription('bank_transfer'),
       icon: '🏦',
     },
   ].filter(m => props.methods.includes(m.id));

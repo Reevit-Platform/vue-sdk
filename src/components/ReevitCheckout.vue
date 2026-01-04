@@ -264,6 +264,7 @@ const ready = computed(() => isReady.value);
                 :selected="currentSelectedMethod"
                 :amount="props.amount"
                 :currency="props.currency"
+                :provider="psp"
                 @select="handleSelectMethod"
               />
 
