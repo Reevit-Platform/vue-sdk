@@ -109,10 +109,22 @@
   background: linear-gradient(120deg, rgba(14, 165, 233, 0.08), transparent 55%);
 }
 
+.reevit-modal__branding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .reevit-modal__logo {
   height: 18px;
   width: auto;
   object-fit: contain;
+}
+
+.reevit-modal__brand-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--reevit-text);
 }
 
 .reevit-modal__close, .reevit-modal-close {

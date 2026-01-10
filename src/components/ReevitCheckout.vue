@@ -392,11 +392,16 @@ const ready = computed(() => isReady.value);
           </button>
 
           <div class="reevit-modal-header">
-            <img 
-              :src="resolvedTheme.logoUrl || 'https://i.imgur.com/bzUR5Lm.png'" 
-              alt="Checkout" 
-              class="reevit-modal__logo"
-            />
+            <div class="reevit-modal__branding">
+              <img 
+                :src="resolvedTheme.logoUrl || 'https://i.imgur.com/bzUR5Lm.png'" 
+                :alt="resolvedTheme.companyName || 'Reevit'" 
+                class="reevit-modal__logo"
+              />
+              <span v-if="resolvedTheme.companyName" class="reevit-modal__brand-name">
+                {{ resolvedTheme.companyName }}
+              </span>
+            </div>
           </div>
 
           <div class="reevit-modal-body">

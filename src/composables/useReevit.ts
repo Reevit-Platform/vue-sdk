@@ -21,6 +21,7 @@ import {
   type PaymentIntentResponse,
   type CheckoutProviderOption,
   type PSPType,
+  type ReevitTheme,
 } from '@reevit/core';
 
 const DEFAULT_PUBLIC_API_BASE_URL = 'https://api.reevit.io';
@@ -93,6 +94,41 @@ function mapAvailableProviders(
     .filter((provider) => provider.methods.length > 0);
 }
 
+function normalizeBranding(branding?: Record<string, unknown>): ReevitTheme {
+  if (!branding) {
+    return {};
+  }
+
+  const raw = branding as Record<string, unknown>;
+  const theme: Record<string, unknown> = { ...raw };
+  const getString = (value: unknown) => (typeof value === 'string' ? value : undefined);
+  const getBoolean = (value: unknown) => (typeof value === 'boolean' ? value : undefined);
+
+  const setIf = (key: string, value: unknown) => {
+    if (value !== undefined) {
+      theme[key] = value;
+    }
+  };
+
+  setIf('logoUrl', getString(raw.logoUrl ?? raw.logo_url));
+  setIf('companyName', getString(raw.companyName ?? raw.company_name));
+  setIf('primaryColor', getString(raw.primaryColor ?? raw.primary_color));
+  setIf('primaryForegroundColor', getString(raw.primaryForegroundColor ?? raw.primary_foreground_color));
+  setIf('backgroundColor', getString(raw.backgroundColor ?? raw.background_color));
+  setIf('surfaceColor', getString(raw.surfaceColor ?? raw.surface_color));
+  setIf('textColor', getString(raw.textColor ?? raw.text_color));
+  setIf('mutedTextColor', getString(raw.mutedTextColor ?? raw.muted_text_color));
+  setIf('borderRadius', getString(raw.borderRadius ?? raw.border_radius));
+  setIf('fontFamily', getString(raw.fontFamily ?? raw.font_family));
+  setIf('darkMode', getBoolean(raw.darkMode ?? raw.dark_mode));
+  setIf('pspSelectorBgColor', getString(raw.pspSelectorBgColor ?? raw.psp_selector_bg_color));
+  setIf('pspSelectorTextColor', getString(raw.pspSelectorTextColor ?? raw.psp_selector_text_color));
+  setIf('pspSelectorBorderColor', getString(raw.pspSelectorBorderColor ?? raw.psp_selector_border_color));
+  setIf('pspSelectorUseBorder', getBoolean(raw.pspSelectorUseBorder ?? raw.psp_selector_use_border));
+
+  return theme as ReevitTheme;
+}
+
 /**
  * Maps backend response to PaymentIntent
  */
@@ -118,7 +154,7 @@ function mapToPaymentIntent(
     netAmount: response.net_amount,
     metadata: config.metadata,
     availableProviders: mapAvailableProviders(response.available_psps),
-    branding: response.branding as PaymentIntent['branding'],
+    branding: normalizeBranding(response.branding as Record<string, unknown> | undefined),
   };
 }
 
