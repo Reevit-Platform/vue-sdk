@@ -1,29 +1,31 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
-import { createThemeVariables } from '@reevit/core';
-import type { ReevitTheme, PaymentIntent } from '@reevit/core';
+import { createThemeVariables, createReevitClient } from '@reevit/core';
+import type { ReevitTheme, PaymentIntent, PaymentMethod, PSPType } from '@reevit/core';
 
+import ProviderSelector from './ProviderSelector.vue';
 import PaymentMethodSelector from './PaymentMethodSelector.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
-import { 
-  openPaystackPopup, 
-  openHubtelPopup, 
+import {
+  openPaystackPopup,
+  openHubtelPopup,
   openFlutterwaveModal,
   openMonnifyModal,
   initiateMPesaSTKPush,
-  createStripeInstance,
-  confirmStripePayment,
 } from '../bridges';
 
 const props = defineProps<{
-  publicKey: string;
+  publicKey?: string;
   amount: number;
   currency: string;
   email?: string;
   phone?: string;
+  customerName?: string;
   reference?: string;
   metadata?: Record<string, unknown>;
+  customFields?: Record<string, unknown>;
+  paymentLinkCode?: string;
   paymentMethods?: ('card' | 'mobile_money' | 'bank_transfer')[];
   theme?: ReevitTheme;
   isOpen?: boolean;
@@ -49,6 +51,7 @@ const {
   handlePspSuccess,
   handlePspError,
   close: closeSdk,
+  reset,
 } = useReevit({
   config: {
     publicKey: props.publicKey,
@@ -56,8 +59,11 @@ const {
     currency: props.currency,
     email: props.email,
     phone: props.phone,
+    customerName: props.customerName,
     reference: props.reference,
     metadata: props.metadata,
+    customFields: props.customFields,
+    paymentLinkCode: props.paymentLinkCode,
     paymentMethods: props.paymentMethods,
     initialPaymentIntent: props.initialPaymentIntent,
   },
@@ -68,6 +74,16 @@ const {
 });
 
 const isModalVisible = ref(props.isOpen ?? false);
+const selectedProvider = ref<PSPType | null>(null);
+
+const pspNames: Record<string, string> = {
+  hubtel: 'Hubtel',
+  paystack: 'Paystack',
+  flutterwave: 'Flutterwave',
+  monnify: 'Monnify',
+  mpesa: 'M-Pesa',
+  stripe: 'Stripe',
+};
 
 watch(() => props.isOpen, (val: any) => {
   if (val !== undefined) isModalVisible.value = val;
@@ -75,6 +91,7 @@ watch(() => props.isOpen, (val: any) => {
 
 const handleOpen = () => {
   isModalVisible.value = true;
+  selectedProvider.value = null;
   if (!paymentIntent.value && status.value === 'idle') {
     initialize();
   }
@@ -83,8 +100,15 @@ const handleOpen = () => {
 // Auto-advance logic
 watch([isModalVisible, paymentIntent, selectedMethod], ([visible, intent, method]) => {
   if (visible && intent && method) {
+    const psp = (selectedProvider.value || intent.recommendedPsp || 'paystack').toLowerCase();
+    const needsPhone = psp.includes('mpesa');
+
     if (method === 'card') {
       handleProcessPayment(null);
+    } else if (method === 'mobile_money') {
+      if (!needsPhone || props.phone) {
+        handleProcessPayment(null);
+      }
     }
   }
 });
@@ -92,6 +116,105 @@ watch([isModalVisible, paymentIntent, selectedMethod], ([visible, intent, method
 const handleClose = () => {
   isModalVisible.value = false;
   closeSdk();
+  selectedProvider.value = null;
+};
+
+const configuredMethods = computed(() =>
+  props.paymentMethods?.length ? props.paymentMethods : (['card', 'mobile_money'] as PaymentMethod[])
+);
+
+const providerOptions = computed(() => {
+  const intent = paymentIntent.value as PaymentIntent | null;
+  if (!intent) return [];
+
+  const allowed = new Set(configuredMethods.value);
+  const options = (intent.availableProviders || [])
+    .map((provider) => {
+      const sanitizedMethods = provider.provider.toLowerCase().includes('hubtel')
+        ? provider.methods.filter((method) => method === 'card' || method === 'mobile_money')
+        : provider.methods;
+
+      return {
+        ...provider,
+        methods: sanitizedMethods.filter((method) => allowed.has(method)),
+      };
+    })
+    .filter((provider) => provider.methods.length > 0);
+
+  if (options.length > 0) {
+    return options;
+  }
+
+  const fallbackMethods = intent.recommendedPsp.toLowerCase().includes('hubtel')
+    ? configuredMethods.value.filter((method) => method === 'card' || method === 'mobile_money')
+    : configuredMethods.value;
+
+  return [
+    {
+      provider: intent.recommendedPsp,
+      name: pspNames[intent.recommendedPsp] || intent.recommendedPsp,
+      methods: fallbackMethods,
+    },
+  ];
+});
+
+const activeProvider = computed<PSPType>(() => {
+  const intent = paymentIntent.value as PaymentIntent | null;
+  return selectedProvider.value || intent?.recommendedPsp || 'paystack';
+});
+
+const availableMethods = computed(() => {
+  const provider = providerOptions.value.find(
+    (option) => option.provider === activeProvider.value
+  );
+  return provider?.methods.length ? provider.methods : configuredMethods.value;
+});
+
+watch(
+  () => providerOptions.value,
+  (options) => {
+    if (!options.length) return;
+
+    // If we have a selected provider that's still valid, keep it
+    if (selectedProvider.value && options.some((p) => p.provider === selectedProvider.value)) {
+      return;
+    }
+
+    // Only auto-select if there's exactly one provider
+    if (options.length === 1) {
+      selectedProvider.value = options[0].provider as PSPType;
+    } else {
+      selectedProvider.value = null;
+    }
+  },
+  { immediate: true }
+);
+
+watch([availableMethods, selectedMethod], ([methods, current]) => {
+  if (!current || methods.length === 0) return;
+  if (!methods.includes(current)) {
+    selectMethod(methods[0]);
+  }
+});
+
+const handleProviderSelect = (provider: string) => {
+  // Toggle behavior - clicking same PSP collapses it
+  if (provider === selectedProvider.value) {
+    selectedProvider.value = null;
+    reset();
+    return;
+  }
+
+  const providerEntry = providerOptions.value.find((option) => option.provider === provider);
+  const methods = providerEntry?.methods.length ? providerEntry.methods : configuredMethods.value;
+  const methodForInit =
+    selectedMethod.value && methods.includes(selectedMethod.value)
+      ? selectedMethod.value
+      : methods[0];
+
+  selectedProvider.value = provider as PSPType;
+  reset();
+  initialize(methodForInit, { preferredProvider: provider, allowedProviders: [provider] });
 };
 
 const handleSelectMethod = (method: any) => {
@@ -102,12 +225,12 @@ const handleProcessPayment = async (data: any) => {
   const intent = paymentIntent.value as PaymentIntent | null;
   if (!intent) return;
 
-  const psp = intent.recommendedPsp;
+  const psp = activeProvider.value;
 
   try {
     if (psp === 'paystack') {
       await openPaystackPopup({
-        key: props.publicKey,
+        key: intent.pspPublicKey || props.publicKey || '',
         email: props.email || '',
         amount: props.amount,
         currency: props.currency,
@@ -116,19 +239,38 @@ const handleProcessPayment = async (data: any) => {
         onClose: () => {},
       });
     } else if (psp === 'hubtel') {
+      const client = createReevitClient({ publicKey: props.publicKey, baseUrl: props.apiBaseUrl });
+      const { data: session, error: sessionError } = await client.createHubtelSession(
+        intent.id,
+        intent.clientSecret
+      );
+      if (sessionError || !session?.basicAuth) {
+        handlePspError({
+          code: sessionError?.code || 'hubtel_session_error',
+          message: sessionError?.message || 'Failed to create Hubtel session',
+        });
+        return;
+      }
+
+      const hubtelPreferredMethod =
+        currentSelectedMethod.value === 'card' || currentSelectedMethod.value === 'mobile_money'
+          ? currentSelectedMethod.value
+          : undefined;
+
       await openHubtelPopup({
-        clientId: (intent.pspCredentials?.merchantAccount as string) || props.publicKey,
+        clientId: (session.merchantAccount as string) || (intent.pspCredentials?.merchantAccount as string) || props.publicKey || '',
         purchaseDescription: `Payment for ${props.amount} ${props.currency}`,
         amount: props.amount,
         customerPhone: data?.phone || props.phone,
         customerEmail: props.email,
-        hubtelSessionToken: intent.id, // Pass payment ID to fetch session token
+        basicAuth: session.basicAuth,
+        preferredMethod: hubtelPreferredMethod,
         onSuccess: (res) => handlePspSuccess(res),
         onClose: () => {},
       });
     } else if (psp === 'flutterwave') {
       await openFlutterwaveModal({
-        public_key: props.publicKey,
+        public_key: intent.pspPublicKey || props.publicKey || '',
         tx_ref: intent.id,
         amount: props.amount,
         currency: props.currency,
@@ -140,9 +282,20 @@ const handleProcessPayment = async (data: any) => {
         onclose: () => {},
       });
     } else if (psp === 'monnify') {
+      const apiKey = intent.pspPublicKey || props.publicKey || '';
+      const contractCode = (props.metadata?.contract_code as string) || props.publicKey || '';
+
+      if (!apiKey || !contractCode) {
+        handlePspError({
+          code: 'MONNIFY_CONFIG_MISSING',
+          message: 'Monnify configuration is missing. Please check your API key and contract code.',
+        });
+        return;
+      }
+
       await openMonnifyModal({
-        apiKey: intent.pspPublicKey || props.publicKey,
-        contractCode: (props.metadata?.contract_code as string) || props.publicKey,
+        apiKey,
+        contractCode,
         amount: props.amount,
         currency: props.currency,
         reference: intent.reference || intent.id,
@@ -184,7 +337,12 @@ const handleProcessPayment = async (data: any) => {
   }
 };
 
-const themeVars = computed(() => createThemeVariables(props.theme || {}));
+const resolvedTheme = computed(() => ({
+  ...(paymentIntent.value?.branding || {}),
+  ...(props.theme || {}),
+}));
+const themeVars = computed(() => createThemeVariables(resolvedTheme.value));
+const themeMode = computed(() => resolvedTheme.value?.darkMode);
 
 
 // Lock scroll when open
@@ -224,15 +382,19 @@ const ready = computed(() => isReady.value);
 
     <Teleport to="body">
       <div v-if="isModalVisible" class="reevit-modal-overlay" @click.self="handleClose">
-        <div class="reevit-modal-content" :class="{ 'reevit-modal--dark': props.theme?.darkMode }">
+        <div
+          class="reevit-modal-content"
+          :class="{ 'reevit-modal--dark': themeMode }"
+          :style="themeVars"
+        >
           <button class="reevit-modal-close" @click="handleClose" aria-label="Close">
             &times;
           </button>
 
           <div class="reevit-modal-header">
             <img 
-              src="https://i.imgur.com/bzUR5Lm.png" 
-              alt="Reevit" 
+              :src="resolvedTheme.logoUrl || 'https://i.imgur.com/bzUR5Lm.png'" 
+              alt="Checkout" 
               class="reevit-modal__logo"
             />
           </div>
@@ -258,34 +420,102 @@ const ready = computed(() => isReady.value);
             </div>
 
             <template v-else-if="ready">
-              <PaymentMethodSelector
-                v-if="currentStatus === 'ready' || currentStatus === 'method_selected' || currentStatus === 'processing'"
-                :methods="props.paymentMethods || ['card', 'mobile_money']"
-                :selected="currentSelectedMethod"
-                :amount="props.amount"
-                :currency="props.currency"
-                :provider="psp"
-                @select="handleSelectMethod"
-              />
+              <div class="reevit-method-step reevit-animate-slide-up">
+                <template v-if="providerOptions.length > 1">
+                  <ProviderSelector
+                    :providers="providerOptions"
+                    :selected-provider="selectedProvider"
+                    :disabled="loading"
+                    :theme="resolvedTheme"
+                    :selected-method="currentSelectedMethod"
+                    @select="handleProviderSelect"
+                    @method-select="handleSelectMethod"
+                  >
+                    <template #method-content>
+                      <div v-if="currentSelectedMethod === 'card'" class="reevit-inline-action reevit-animate-fade-in">
+                        <p class="reevit-inline-action__hint">
+                          You'll be redirected to complete your card payment securely.
+                        </p>
+                        <button
+                          class="reevit-btn reevit-btn--primary"
+                          @click="handleProcessPayment(null)"
+                          :disabled="currentStatus === 'processing'"
+                        >
+                          Pay with Card
+                        </button>
+                      </div>
+                      <div v-else-if="currentSelectedMethod === 'mobile_money'" class="reevit-inline-action reevit-animate-fade-in">
+                        <template v-if="activeProvider.includes('mpesa') && !props.phone">
+                          <MobileMoneyForm
+                            :initial-phone="props.phone"
+                            :loading="currentStatus === 'processing'"
+                            hide-cancel
+                            @submit="handleProcessPayment"
+                          />
+                        </template>
+                        <template v-else>
+                          <p class="reevit-inline-action__hint">
+                            {{ activeProvider.includes('hubtel')
+                              ? 'Opens the Hubtel checkout with Mobile Money selected.'
+                              : `Continue to pay securely with Mobile Money via ${pspNames[activeProvider] || activeProvider}.` }}
+                          </p>
+                          <button
+                            class="reevit-btn reevit-btn--primary"
+                            @click="handleProcessPayment(null)"
+                            :disabled="currentStatus === 'processing'"
+                          >
+                            {{ activeProvider.includes('hubtel') ? 'Continue with Hubtel' : 'Pay with Mobile Money' }}
+                          </button>
+                        </template>
+                      </div>
+                    </template>
+                  </ProviderSelector>
+                </template>
+                
+                <template v-else>
+                  <PaymentMethodSelector
+                    :methods="availableMethods"
+                    :selected="currentSelectedMethod"
+                    :provider="activeProvider"
+                    :show-label="false"
+                    layout="grid"
+                    @select="handleSelectMethod"
+                  />
 
-              <div v-if="(currentStatus === 'method_selected' || currentStatus === 'processing') && currentSelectedMethod === 'mobile_money'" class="reevit-method-form-container">
-                <MobileMoneyForm 
-                  :initial-phone="props.phone"
-                  :loading="currentStatus === 'processing'"
-                  @submit="handleProcessPayment"
-                />
-              </div>
-
-              <div v-if="(currentStatus === 'method_selected' || currentStatus === 'processing') && currentSelectedMethod === 'card'" class="reevit-card-info">
-                <p class="reevit-info-text">You will be redirected to our secure payment partner to complete your card payment.</p>
-                <button 
-                  class="reevit-submit-btn" 
-                  @click="handleProcessPayment"
-                  :disabled="currentStatus === 'processing'"
-                >
-                  <span v-if="currentStatus === 'processing'" class="reevit-spinner"></span>
-                  <span v-else>Proceed to Card Payment</span>
-                </button>
+                  <div v-if="currentSelectedMethod" class="reevit-method-step__actions reevit-animate-slide-up">
+                    <div v-if="currentSelectedMethod === 'mobile_money' && activeProvider.includes('mpesa') && !props.phone">
+                      <MobileMoneyForm 
+                        :initial-phone="props.phone"
+                        :loading="currentStatus === 'processing'"
+                        @submit="handleProcessPayment"
+                        @cancel="selectMethod(null as any)"
+                      />
+                    </div>
+                    <div v-else class="reevit-card-info reevit-animate-fade-in">
+                      <p class="reevit-info-text">
+                        {{ currentSelectedMethod === 'card' 
+                          ? 'You will be redirected to complete your card payment securely.' 
+                          : activeProvider.includes('hubtel')
+                            ? 'Opens the Hubtel checkout with Mobile Money selected.'
+                            : `Continue to pay securely via ${pspNames[activeProvider] || activeProvider}.` }}
+                      </p>
+                      <button 
+                        class="reevit-submit-btn" 
+                        @click="handleProcessPayment(null)"
+                        :disabled="currentStatus === 'processing'"
+                      >
+                        <span v-if="currentStatus === 'processing'" class="reevit-spinner"></span>
+                        <span v-else>
+                          {{ currentSelectedMethod === 'card'
+                            ? 'Pay with Card'
+                            : activeProvider.includes('hubtel')
+                              ? 'Continue with Hubtel'
+                              : 'Pay with Mobile Money' }}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </template>
               </div>
             </template>
           </div>

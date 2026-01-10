@@ -6,10 +6,12 @@ import type { MobileMoneyNetwork, MobileMoneyFormData } from '@reevit/core';
 const props = defineProps<{
   initialPhone?: string;
   loading?: boolean;
+  hideCancel?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'submit', data: MobileMoneyFormData): void;
+  (e: 'cancel'): void;
 }>();
 
 const phone = ref(props.initialPhone || '');
@@ -89,14 +91,25 @@ const providers = [
 
     <p v-if="error" class="reevit-error-message">{{ error }}</p>
 
-    <button 
-      type="submit" 
-      class="reevit-submit-btn" 
-      :disabled="loading || !phone"
-    >
-      <span v-if="loading" class="reevit-spinner" />
-      <span v-else>Continue</span>
-    </button>
+    <div class="reevit-momo-form__actions">
+      <button 
+        v-if="!hideCancel"
+        type="button" 
+        class="reevit-btn reevit-btn--secondary" 
+        @click="emit('cancel')"
+        :disabled="loading"
+      >
+        Back
+      </button>
+      <button 
+        type="submit" 
+        class="reevit-btn reevit-btn--primary" 
+        :disabled="loading || !phone"
+      >
+        <span v-if="loading" class="reevit-spinner" />
+        <span v-else>Continue</span>
+      </button>
+    </div>
 
     <p class="reevit-secure-text">
       🔒 Secure mobile money payment via Reevit

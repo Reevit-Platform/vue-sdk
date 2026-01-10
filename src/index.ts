@@ -7,6 +7,7 @@ import './styles.css';
 
 // Components
 export { default as ReevitCheckout } from './components/ReevitCheckout.vue';
+export { default as ProviderSelector } from './components/ProviderSelector.vue';
 export { default as PaymentMethodSelector } from './components/PaymentMethodSelector.vue';
 export { default as MobileMoneyForm } from './components/MobileMoneyForm.vue';
 
@@ -67,4 +68,3 @@ export {
   type MPesaConfig,
   type MPesaSTKPushResult,
 } from './bridges';
-

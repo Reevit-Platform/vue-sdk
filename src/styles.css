@@ -3,54 +3,54 @@
  * Minimal design system matching Reevit dashboard
  */
 
-/* Import Geist Mono font */
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap');
+/* Import Space Grotesk font */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 /* CSS Variables for theming - Light mode */
 :root {
-  --reevit-primary: oklch(0.922 0 0);
-  --reevit-primary-hover: oklch(0.85 0 0);
-  --reevit-primary-foreground: oklch(0.145 0 0);
-  --reevit-background: oklch(1 0 0);
-  --reevit-surface: oklch(0.97 0 0);
-  --reevit-border: oklch(0.922 0 0);
-  --reevit-text: oklch(0.145 0 0);
-  --reevit-text-secondary: oklch(0.556 0 0);
-  --reevit-muted: oklch(0.708 0 0);
-  --reevit-success: oklch(0.696 0.17 162.48);
-  --reevit-error: oklch(0.577 0.245 27.325);
-  --reevit-warning: oklch(0.828 0.189 84.429);
-  --reevit-radius: 0.625rem;
+  --reevit-primary: #0ea5e9;
+  --reevit-primary-hover: #0284c7;
+  --reevit-primary-foreground: #ffffff;
+  --reevit-background: #f8fafc;
+  --reevit-surface: #ffffff;
+  --reevit-border: rgba(15, 23, 42, 0.12);
+  --reevit-text: #0f172a;
+  --reevit-text-secondary: #475569;
+  --reevit-muted: #94a3b8;
+  --reevit-success: #16a34a;
+  --reevit-error: #dc2626;
+  --reevit-warning: #f59e0b;
+  --reevit-radius: 0.75rem;
   --reevit-radius-sm: 0.5rem;
-  --reevit-radius-lg: 0.75rem;
-  --reevit-font: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  --reevit-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  --reevit-shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --reevit-radius-lg: 1.25rem;
+  --reevit-font: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+  --reevit-shadow: 0 30px 60px -30px rgba(15, 23, 42, 0.35);
+  --reevit-shadow-sm: 0 12px 24px -18px rgba(15, 23, 42, 0.3);
 }
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   :root {
-    --reevit-primary: oklch(0.922 0 0);
-    --reevit-primary-hover: oklch(0.85 0 0);
-    --reevit-primary-foreground: oklch(0.145 0 0);
-    --reevit-background: oklch(0.145 0 0);
-    --reevit-surface: oklch(0.205 0 0);
-    --reevit-border: oklch(1 0 0 / 10%);
-    --reevit-text: oklch(0.985 0 0);
-    --reevit-text-secondary: oklch(0.708 0 0);
-    --reevit-muted: oklch(0.556 0 0);
-    --reevit-success: oklch(0.696 0.17 162.48);
-    --reevit-error: oklch(0.704 0.191 22.216);
-    --reevit-warning: oklch(0.828 0.189 84.429);
+    --reevit-primary: #38bdf8;
+    --reevit-primary-hover: #0ea5e9;
+    --reevit-primary-foreground: #0b1120;
+    --reevit-background: #0b1120;
+    --reevit-surface: #111827;
+    --reevit-border: rgba(148, 163, 184, 0.2);
+    --reevit-text: #f8fafc;
+    --reevit-text-secondary: #cbd5f5;
+    --reevit-muted: #94a3b8;
+    --reevit-success: #22c55e;
+    --reevit-error: #f87171;
+    --reevit-warning: #fbbf24;
   }
 }
 
 /* ===== OVERLAY ===== */
-.reevit-overlay {
+.reevit-overlay, .reevit-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: radial-gradient(120% 120% at 50% 0%, rgba(14, 165, 233, 0.2), transparent 55%), rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -67,19 +67,21 @@
 }
 
 /* ===== MODAL ===== */
-.reevit-modal {
+.reevit-modal, .reevit-modal-content {
   background: var(--reevit-background);
   border-radius: var(--reevit-radius-lg);
   border: 1px solid var(--reevit-border);
   box-shadow: var(--reevit-shadow);
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  min-height:380px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   font-family: var(--reevit-font);
-  animation: reevit-slide-up 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: reevit-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: min-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes reevit-slide-up {
@@ -98,18 +100,13 @@
 }
 
 /* Modal Header */
-.reevit-modal__header {
+.reevit-modal__header, .reevit-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 18px 22px;
   border-bottom: 1px solid var(--reevit-border);
-}
-
-.reevit-modal__branding {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  background: linear-gradient(120deg, rgba(14, 165, 233, 0.08), transparent 55%);
 }
 
 .reevit-modal__logo {
@@ -118,7 +115,7 @@
   object-fit: contain;
 }
 
-.reevit-modal__close {
+.reevit-modal__close, .reevit-modal-close {
   width: 28px;
   height: 28px;
   border-radius: var(--reevit-radius-sm);
@@ -133,7 +130,7 @@
   transition: all 0.15s ease;
 }
 
-.reevit-modal__close:hover {
+.reevit-modal__close:hover, .reevit-modal-close:hover {
   background: var(--reevit-surface);
   color: var(--reevit-text);
   border-color: var(--reevit-text-secondary);
@@ -141,9 +138,9 @@
 
 /* Modal Amount */
 .reevit-modal__amount {
-  padding: 32px 20px;
+  padding: 28px 22px;
   text-align: center;
-  background: var(--reevit-surface);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(14, 165, 233, 0.04));
   border-bottom: 1px solid var(--reevit-border);
 }
 
@@ -166,219 +163,263 @@
 }
 
 /* Modal Content */
-.reevit-modal__content {
+.reevit-modal__content, .reevit-modal-body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
 }
 
 /* Modal Footer */
-.reevit-modal__footer {
+.reevit-modal__footer, .reevit-modal-footer {
   padding: 14px 20px;
   border-top: 1px solid var(--reevit-border);
   text-align: center;
   background: var(--reevit-surface);
 }
 
-.reevit-modal__secured {
+.reevit-modal__secured, .reevit-trust-badges {
   font-size: 11px;
   font-weight: 500;
   color: var(--reevit-text-secondary);
   letter-spacing: 0.02em;
 }
 
-/* ===== PAYMENT METHOD SELECTOR ===== */
-.reevit-method-selector {
-  margin-bottom: 20px;
-}
-
-.reevit-method-selector__label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--reevit-text);
-  margin-bottom: 12px;
-  letter-spacing: 0.02em;
-}
-
-.reevit-method-selector__options {
+/* ===== PSP ACCORDION ===== */
+.reevit-psp-accordion {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  margin-bottom: 12px;
 }
 
-.reevit-method-option {
+.reevit-psp-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   padding: 14px 16px;
-  background: transparent;
+  border-radius: 12px;
   border: 1px solid var(--reevit-border);
-  border-radius: var(--reevit-radius);
+  background: var(--reevit-surface);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
+  width: 100%;
+  position: relative;
+}
+
+.reevit-psp-option:hover:not(.reevit-psp-option--disabled):not(.reevit-psp-option--selected) {
+  border-color: color-mix(in srgb, var(--reevit-primary) 50%, var(--reevit-border));
+  background: color-mix(in srgb, var(--reevit-primary) 4%, var(--reevit-surface));
+  transform: translateY(-1px);
+}
+
+.reevit-psp-option--selected {
+  border-radius: 12px 12px 0 0 !important;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--reevit-primary) 40%, var(--reevit-border));
+  border-bottom-color: transparent;
+  background: color-mix(in srgb, var(--reevit-primary) 5%, var(--reevit-surface));
+  position: relative;
+  z-index: 1;
+}
+
+.reevit-psp-accordion__content {
+  padding: 16px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--reevit-primary) 40%, var(--reevit-border));
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-top: 0;
+  overflow: hidden;
+  animation: reevit-accordion-expand 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top;
+  position: relative;
+}
+
+@keyframes reevit-accordion-expand {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: scale(0.98) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ===== PAYMENT METHOD SELECTOR ===== */
+.reevit-method-selector__options--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
   width: 100%;
 }
 
-.reevit-method-option:hover {
-  border-color: var(--reevit-text-secondary);
+.reevit-method-selector__options--list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.reevit-method-option--grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 16px;
+  min-height: 120px;
   background: var(--reevit-surface);
+  border: 1px solid var(--reevit-border);
+  border-radius: var(--reevit-radius);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  width: 100%;
 }
 
-.reevit-method-option--selected {
-  border-color: var(--reevit-text);
-  background: var(--reevit-surface);
+.reevit-method-option--grid:hover:not(.reevit-method-option--disabled) {
+  border-color: var(--reevit-primary);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--reevit-primary) 30%, transparent);
 }
 
-.reevit-method-option--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.reevit-method-option--grid.reevit-method-option--selected {
+  border-color: var(--reevit-primary);
+  background: color-mix(in srgb, var(--reevit-primary) 8%, var(--reevit-surface));
+  border-width: 2px;
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--reevit-primary) 35%, transparent);
 }
 
-.reevit-method-option__icon {
-  font-size: 20px;
+.reevit-method-option--grid .reevit-method-option__icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: color-mix(in srgb, var(--reevit-text) 5%, transparent);
+  border-radius: 18px;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reevit-method-option--grid:hover .reevit-method-option__icon-wrapper {
+  transform: scale(1.15) rotate(5deg);
+  background: color-mix(in srgb, var(--reevit-primary) 15%, transparent);
+}
+
+.reevit-method-option--grid.reevit-method-option--selected .reevit-method-option__icon-wrapper {
+  background: color-mix(in srgb, var(--reevit-primary) 25%, transparent);
+  color: var(--reevit-primary);
+  transform: scale(1.1);
+}
+
+.reevit-method-option--grid .reevit-method-option__icon {
+  font-size: 36px;
+}
+
+.reevit-method-option--grid .reevit-method-option__label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--reevit-text);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.reevit-method-option--list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--reevit-text) 4%, transparent);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.reevit-method-option--list:hover:not(.reevit-method-option--disabled) {
+  border-color: color-mix(in srgb, var(--reevit-primary) 60%, var(--reevit-border));
+  background: color-mix(in srgb, var(--reevit-primary) 8%, var(--reevit-surface));
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -18px rgba(15, 23, 42, 0.35);
+}
+
+.reevit-method-option--list.reevit-method-option--selected {
+  border-color: var(--reevit-primary);
+  background: color-mix(in srgb, var(--reevit-primary) 12%, var(--reevit-surface));
+  box-shadow: 0 8px 20px -16px color-mix(in srgb, var(--reevit-primary) 40%, transparent);
+}
+
+.reevit-method-option--list .reevit-method-option__icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  background: color-mix(in srgb, var(--reevit-text) 5%, transparent);
+  border-radius: 14px;
   flex-shrink: 0;
-  opacity: 0.8;
+  transition: all 0.2s ease;
+  font-size: 24px;
 }
 
-.reevit-method-option__content {
+.reevit-method-option--list:hover .reevit-method-option__icon-wrapper {
+  background: color-mix(in srgb, var(--reevit-primary) 12%, transparent);
+  transform: scale(1.03);
+}
+
+.reevit-method-option--list.reevit-method-option--selected .reevit-method-option__icon-wrapper {
+  background: color-mix(in srgb, var(--reevit-primary) 16%, transparent);
+  transform: scale(1.05);
+}
+
+.reevit-method-option--list .reevit-method-option__content {
   flex: 1;
   min-width: 0;
 }
 
-.reevit-method-option__label {
+.reevit-method-option--list .reevit-method-option__label {
   display: block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--reevit-text);
+  margin-bottom: 4px;
   letter-spacing: -0.01em;
 }
 
-.reevit-method-option__description {
+.reevit-method-option--list .reevit-method-option__description {
   display: block;
-  font-size: 11px;
-  color: var(--reevit-text-secondary);
-  margin-top: 2px;
-  letter-spacing: 0.01em;
+  font-size: 14px;
+  color: var(--reevit-text);
+  opacity: 0.6;
+  line-height: 1.4;
 }
 
-.reevit-method-option__check {
-  color: var(--reevit-text);
+.reevit-method-option--list .reevit-method-option__chevron {
+  color: var(--reevit-primary);
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
-  font-size: 14px;
 }
 
-/* ===== MOBILE MONEY FORM ===== */
-.reevit-momo-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.reevit-momo-form__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.reevit-momo-form__label {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--reevit-text);
-  letter-spacing: 0.02em;
-}
-
-.reevit-momo-form__input {
-  padding: 10px 14px;
-  font-size: 14px;
-  border: 1px solid var(--reevit-border);
-  border-radius: var(--reevit-radius);
-  background: transparent;
-  color: var(--reevit-text);
-  transition: all 0.15s ease;
-  font-family: var(--reevit-font);
-}
-
-.reevit-momo-form__input:focus {
-  outline: none;
-  border-color: var(--reevit-text-secondary);
-  background: var(--reevit-surface);
-}
-
-.reevit-momo-form__input--error {
-  border-color: var(--reevit-error);
-}
-
-.reevit-momo-form__input--error:focus {
-  border-color: var(--reevit-error);
-}
-
-.reevit-momo-form__formatted {
-  font-size: 11px;
-  color: var(--reevit-text-secondary);
-}
-
-.reevit-momo-form__error {
-  font-size: 11px;
-  color: var(--reevit-error);
-}
-
-.reevit-momo-form__networks {
-  display: flex;
-  gap: 8px;
-}
-
-.reevit-network-btn {
-  flex: 1;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid var(--reevit-border);
-  border-radius: var(--reevit-radius);
-  background: transparent;
-  color: var(--reevit-text);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: var(--reevit-font);
-}
-
-.reevit-network-btn:hover {
-  border-color: var(--reevit-text);
-  background: transparent;
-}
-
-.reevit-network-btn:focus {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-.reevit-network-btn--selected {
-  border-color: var(--reevit-text);
-  background: var(--reevit-text);
-  color: var(--reevit-background);
-}
-
-.reevit-network-btn--selected:hover {
-  background: var(--reevit-text-secondary);
-  border-color: var(--reevit-text-secondary);
-}
-
-.reevit-momo-form__actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.reevit-momo-form__hint {
-  font-size: 11px;
-  color: var(--reevit-text-secondary);
-  text-align: center;
-  margin-top: 4px;
+.reevit-method-option--list:hover .reevit-method-option__chevron,
+.reevit-method-option--list.reevit-method-option--selected .reevit-method-option__chevron {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* ===== BUTTONS ===== */
-.reevit-btn {
+.reevit-btn, .reevit-pay-button, .reevit-submit-btn, .reevit-retry-btn, .reevit-done-btn, .reevit-cancel-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -392,387 +433,22 @@
   font-family: var(--reevit-font);
   border: none;
   min-height: 42px;
-  letter-spacing: -0.01em;
 }
 
-.reevit-btn--primary {
+.reevit-btn--primary, .reevit-pay-button, .reevit-submit-btn, .reevit-retry-btn, .reevit-done-btn {
   flex: 1;
-  background: oklch(1 0 0);
-  color: oklch(0.145 0 0);
-  border: 1px solid var(--reevit-border);
+  background: var(--reevit-primary);
+  color: var(--reevit-primary-foreground);
+  border: 1px solid color-mix(in srgb, var(--reevit-primary) 60%, var(--reevit-border));
 }
 
-.reevit-btn--primary:hover:not(:disabled) {
-  background: oklch(0.97 0 0);
-  border-color: var(--reevit-text-secondary);
-}
-
-.reevit-btn--primary:focus:not(:disabled) {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-.reevit-btn--primary:active:not(:disabled) {
-  background: oklch(0.95 0 0);
-  transform: scale(0.98);
-}
-
-.reevit-btn--primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.reevit-btn--secondary {
-  background: transparent;
-  color: var(--reevit-text);
-  border: 1px solid var(--reevit-border);
-}
-
-.reevit-btn--secondary:hover:not(:disabled) {
-  background: transparent;
-  border-color: var(--reevit-text);
-}
-
-.reevit-btn--secondary:focus:not(:disabled) {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-.reevit-trigger-btn {
-  padding: 10px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  background: oklch(1 0 0);
-  color: oklch(0.145 0 0);
-  border: 1px solid var(--reevit-border);
-  border-radius: var(--reevit-radius);
-  cursor: pointer;
-  font-family: var(--reevit-font);
-  transition: all 0.15s ease;
-  letter-spacing: -0.01em;
-}
-
-.reevit-trigger-btn:hover {
-  background: oklch(0.97 0 0);
-  border-color: var(--reevit-text-secondary);
-}
-
-.reevit-trigger-btn:focus {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-/* Dark mode button overrides */
-@media (prefers-color-scheme: dark) {
-  .reevit-btn--primary {
-    background: oklch(0.985 0 0);
-    color: oklch(0.145 0 0);
-  }
-  
-  .reevit-btn--primary:hover:not(:disabled) {
-    background: oklch(0.9 0 0);
-  }
-  
-  .reevit-btn--primary:active:not(:disabled) {
-    background: oklch(0.85 0 0);
-  }
-  
-  .reevit-trigger-btn {
-    background: oklch(0.985 0 0);
-    color: oklch(0.145 0 0);
-  }
-  
-  .reevit-trigger-btn:hover {
-    background: oklch(0.9 0 0);
-  }
-}
-
-/* ===== STATES ===== */
-.reevit-loading,
-.reevit-success,
-.reevit-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  gap: 12px;
-}
-
-.reevit-success__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--reevit-success);
-  color: white;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: reevit-pop 0.3s ease-out;
-}
-
-.reevit-error__icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--reevit-error);
-  color: white;
-  font-size: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@keyframes reevit-pop {
-  0% { transform: scale(0); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-
-.reevit-success h3,
-.reevit-error h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--reevit-text);
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.reevit-success p,
-.reevit-error p {
-  font-size: 12px;
-  color: var(--reevit-text-secondary);
-  margin: 0;
-}
-
-/* ===== SPINNER ===== */
-.reevit-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--reevit-border);
-  border-top-color: var(--reevit-text);
-  border-radius: 50%;
-  animation: reevit-spin 0.7s linear infinite;
-}
-
-@keyframes reevit-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Large spinner for loading states */
-.reevit-loading .reevit-spinner {
-  width: 32px;
-  height: 32px;
-  border-width: 2px;
-}
-
-.reevit-loading p {
-  font-size: 12px;
-  color: var(--reevit-text-secondary);
-  margin: 0;
-}
-
-/* ===== PSP BRIDGE ===== */
-.reevit-psp-bridge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  gap: 12px;
-}
-
-.reevit-psp-bridge__loading p {
-  font-size: 12px;
-  color: var(--reevit-text-secondary);
-  margin: 0;
-}
-
-/* ===== METHOD STEP ACTIONS ===== */
-.reevit-method-step__actions {
-  margin-top: 16px;
-}
-
-/* ===== STRIPE BRIDGE ===== */
-.reevit-stripe-bridge {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-}
-
-.reevit-stripe-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  gap: 12px;
-  min-height: 200px;
-}
-
-.reevit-stripe-loading p {
-  font-size: 12px;
-  color: var(--reevit-text-secondary);
-  margin: 0;
-}
-
-.reevit-stripe-element {
-  min-height: 200px;
-  border-radius: var(--reevit-radius);
-}
-
-/* Override Stripe's default form styling for better dark mode compatibility */
-.reevit-stripe-element iframe {
-  border-radius: var(--reevit-radius);
-}
-
-.reevit-stripe-error {
-  padding: 10px 14px;
-  background: oklch(0.577 0.245 27.325 / 0.1);
-  border: 1px solid var(--reevit-error);
-  border-radius: var(--reevit-radius);
-}
-
-.reevit-stripe-error p {
-  font-size: 12px;
-  color: var(--reevit-error);
-  margin: 0;
-}
-
-.reevit-stripe-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-/* Submit Button - Primary action */
-.reevit-submit-btn {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: var(--reevit-radius);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: var(--reevit-font);
-  min-height: 44px;
-  letter-spacing: -0.01em;
-  background: oklch(1 0 0);
-  color: oklch(0.145 0 0);
-  border: 1px solid var(--reevit-border);
-}
-
-.reevit-submit-btn:hover:not(:disabled) {
-  background: oklch(0.97 0 0);
-  border-color: var(--reevit-text-secondary);
-}
-
-.reevit-submit-btn:focus:not(:disabled) {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-.reevit-submit-btn:active:not(:disabled) {
-  background: oklch(0.95 0 0);
-  transform: scale(0.98);
-}
-
-.reevit-submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Cancel Button - Secondary action */
-.reevit-cancel-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px 18px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: var(--reevit-radius);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: var(--reevit-font);
-  min-height: 44px;
-  letter-spacing: -0.01em;
-  background: transparent;
-  color: var(--reevit-text);
-  border: 1px solid var(--reevit-border);
-}
-
-.reevit-cancel-btn:hover:not(:disabled) {
-  background: transparent;
-  border-color: var(--reevit-text);
-}
-
-.reevit-cancel-btn:focus:not(:disabled) {
-  outline: none;
-  border-color: var(--reevit-text);
-  box-shadow: 0 0 0 2px var(--reevit-border);
-}
-
-.reevit-cancel-btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.reevit-cancel-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Dark mode button overrides for Stripe */
-@media (prefers-color-scheme: dark) {
-  .reevit-submit-btn {
-    background: oklch(0.985 0 0);
-    color: oklch(0.145 0 0);
-  }
-  
-  .reevit-submit-btn:hover:not(:disabled) {
-    background: oklch(0.9 0 0);
-  }
-  
-  .reevit-submit-btn:active:not(:disabled) {
-    background: oklch(0.85 0 0);
-  }
-}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
-  .reevit-modal {
+  .reevit-modal, .reevit-modal-content {
     max-width: 100%;
     max-height: 100%;
     border-radius: var(--reevit-radius-lg) var(--reevit-radius-lg) 0 0;
     margin-top: auto;
-  }
-
-  .reevit-modal__amount-value {
-    font-size: 28px;
-  }
-
-  .reevit-momo-form__networks {
-    flex-direction: column;
-  }
-
-  .reevit-momo-form__actions {
-    flex-direction: column-reverse;
-  }
-
-  .reevit-btn--secondary {
-    flex: none;
   }
 }
