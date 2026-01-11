@@ -241,7 +241,7 @@ const result = await initiateMPesaSTKPush(
 
 | Provider | Countries | Payment Methods |
 |----------|-----------|-----------------|
-| Paystack | NG, GH: 'MTN, Telecel, AirtelTigo Money', Bank Transfer |
+| Paystack | NG, GH, ZA, KE | Card, Mobile Money, Bank Transfer |
 | Flutterwave | NG, GH, KE, ZA + | Card, Mobile Money, Bank Transfer |
 | Hubtel | GH | Mobile Money |
 | Stripe | Global (50+) | Card, Apple Pay, Google Pay |
