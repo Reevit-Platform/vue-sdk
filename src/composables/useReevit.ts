@@ -163,6 +163,7 @@ export function useReevit(options: UseReevitOptions) {
 
   // Reactive state
   const state = ref<ReevitState>(createInitialState());
+  const initRequestId = ref(0);
 
   // Handle initial intent if provided
   if (config.initialPaymentIntent) {
@@ -202,6 +203,7 @@ export function useReevit(options: UseReevitOptions) {
     method?: PaymentMethod,
     options?: { preferredProvider?: string; allowedProviders?: string[] }
   ) => {
+    const requestId = ++initRequestId.value;
     dispatch({ type: 'INIT_START' });
 
     try {
@@ -258,6 +260,10 @@ export function useReevit(options: UseReevitOptions) {
         error = result.error;
       }
 
+      if (requestId !== initRequestId.value) {
+        return;
+      }
+
       if (error) {
         dispatch({ type: 'INIT_ERROR', payload: error });
         onError?.(error);
@@ -278,6 +284,9 @@ export function useReevit(options: UseReevitOptions) {
       const paymentIntent = mapToPaymentIntent(data, { ...config, reference });
       dispatch({ type: 'INIT_SUCCESS', payload: paymentIntent });
     } catch (err) {
+      if (requestId !== initRequestId.value) {
+        return;
+      }
       const error: PaymentError = {
         code: 'INIT_FAILED',
         message: err instanceof Error ? err.message : 'Failed to initialize checkout',
@@ -369,6 +378,7 @@ export function useReevit(options: UseReevitOptions) {
 
   // Reset checkout
   const reset = () => {
+    initRequestId.value += 1;
     dispatch({ type: 'RESET' });
   };
 
