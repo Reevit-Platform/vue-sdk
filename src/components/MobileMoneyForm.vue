@@ -48,7 +48,7 @@ const handleSubmit = () => {
 
 const providers = [
   { id: 'mtn' as const, name: 'MTN', color: '#FFCC00' },
-  { id: 'vodafone' as const, name: 'Vodafone', color: '#E60000' },
+  { id: 'telecel' as const, name: 'Telecel', color: '#E60000' },
   { id: 'airteltigo' as const, name: 'AirtelTigo', color: '#005596' },
 ];
 </script>

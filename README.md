@@ -48,6 +48,34 @@ const handleError = (error: any) => {
 </template>
 ```
 
+## Controlled Modal
+
+You can control the open state yourself.
+
+```vue
+<script setup>
+const open = ref(false);
+</script>
+
+<template>
+  <ReevitCheckout
+    publicKey="pk_test_your_key"
+    :amount="10000"
+    currency="GHS"
+    :isOpen="open"
+    @close="open = false"
+  />
+</template>
+```
+
+## Success Screen Delay
+
+By default, the checkout shows a success screen for 5 seconds before calling `@success` and closing. Override with `successDelayMs` (set to `0` for immediate close).
+
+```vue
+<ReevitCheckout :successDelayMs="0" />
+```
+
 ## Custom Theme
 
 ```vue
@@ -102,12 +130,43 @@ const {
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `publicKey` | `string` | Your project's public key |
-| `amount` | `number` | Amount in smallest unit |
-| `currency` | `string` | 3-letter currency code |
-| `email` | `string` | Customer's email |
-| `theme` | `ReevitTheme` | Customization options |
-| `isOpen` | `boolean` | Control modal visibility manually |
+| `publicKey` | `string` | Your project's public key (required for API-created intents; optional when using `paymentLinkCode`) |
+| `amount` | `number` | **Required**. Amount in the smallest unit (e.g., 500 for 5.00) |
+| `currency` | `string` | **Required**. 3-letter ISO currency code (GHS, NGN, USD, etc.) |
+| `email` | `string` | Customer's email address |
+| `phone` | `string` | Customer's phone number (recommended for Mobile Money) |
+| `customerName` | `string` | Customer name (used in payment links and some PSPs) |
+| `reference` | `string` | Your own unique transaction reference |
+| `metadata` | `object` | Key-value pairs to store with the transaction |
+| `customFields` | `object` | Custom fields for payment links |
+| `paymentLinkCode` | `string` | Hosted payment link code (uses the public link checkout flow) |
+| `paymentMethods` | `PaymentMethod[]` | Enabled methods: `card`, `mobile_money`, `bank_transfer`, `apple_pay`, `google_pay` (PSP/country dependent) |
+| `initialPaymentIntent` | `PaymentIntent` | Use an existing intent instead of creating a new one |
+| `isOpen` | `boolean` | Controlled open state |
+| `theme` | `ReevitTheme` | Customization options for the widget |
+| `apiBaseUrl` | `string` | Override API base URL (self-hosted/testing) |
+| `successDelayMs` | `number` | Delay before calling `@success` and closing (default `5000`) |
+
+## Theme Reference
+
+| Field | Description |
+|-------|-------------|
+| `primaryColor` | Primary text/brand color |
+| `primaryForegroundColor` | Text color on primary brand surfaces |
+| `backgroundColor` | Background color for the modal |
+| `borderColor` | Border and divider color |
+| `borderRadius` | Border radius for inputs and buttons |
+| `darkMode` | Force dark mode when `true` |
+| `logoUrl` | Logo URL shown in the header |
+| `companyName` | Brand name shown in the header |
+| `selectedBackgroundColor` | Background color for selected provider/methods |
+| `selectedTextColor` | Primary text color for selected items |
+| `selectedDescriptionColor` | Description/muted text color for selected items |
+| `selectedBorderColor` | Border color for selected items |
+| `pspSelectorBgColor` | PSP selector background color (where supported) |
+| `pspSelectorTextColor` | PSP selector text color (where supported) |
+| `pspSelectorBorderColor` | PSP selector border color (where supported) |
+| `pspSelectorUseBorder` | Use border-only PSP selector styling |
 
 ## Events
 
@@ -177,6 +236,17 @@ const result = await initiateMPesaSTKPush(
   '/api/mpesa/stk-push' // Your backend endpoint
 );
 ```
+
+## Supported PSPs
+
+| Provider | Countries | Payment Methods |
+|----------|-----------|-----------------|
+| Paystack | NG, GH, ZA, KE | Card, Mobile Money, Bank Transfer |
+| Flutterwave | NG, GH, KE, ZA + | Card, Mobile Money, Bank Transfer |
+| Hubtel | GH | Mobile Money |
+| Stripe | Global (50+) | Card, Apple Pay, Google Pay |
+| Monnify | NG | Card, Bank Transfer, USSD |
+| M-Pesa | KE, TZ | Mobile Money (STK Push) |
 
 ## License
 

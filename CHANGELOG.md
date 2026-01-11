@@ -2,6 +2,28 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [0.5.0] - 2026-01-11
+
+### 🚀 New Features
+
+#### Apple Pay & Google Pay Support
+- Added `apple_pay` and `google_pay` as supported payment methods.
+- Included localized logos for Apple Pay and Google Pay.
+
+#### Local Asset Bundling
+- Switched from CDN-hosted logos to local bundled assets for better performance and reliability.
+
+#### Success Screen Customization
+- Added `successDelayMs` prop to `ReevitCheckout` to control how long the success screen is displayed before closing (default: 5000ms).
+
+### 📦 Install / Upgrade
+
+```bash
+npm install @reevit/vue@0.5.0
+```
+
+---
+
 ## [0.3.2] - 2025-12-29
 
 ### 🐛 Bug Fixes

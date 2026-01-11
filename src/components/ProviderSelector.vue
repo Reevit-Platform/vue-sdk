@@ -3,6 +3,12 @@ import { computed } from 'vue';
 import type { CheckoutProviderOption, PaymentMethod, ReevitTheme } from '@reevit/core';
 import { cn } from '@reevit/core';
 import PaymentMethodSelector from './PaymentMethodSelector.vue';
+import flutterwaveLogo from '../assets/providers/flutterwave.png';
+import hubtelLogo from '../assets/providers/hubtel.png';
+import monnifyLogo from '../assets/providers/monnify.png';
+import mpesaLogo from '../assets/providers/mpesa.png';
+import paystackLogo from '../assets/providers/paystack.png';
+import stripeLogo from '../assets/providers/stripe.png';
 
 const props = defineProps<{
   providers: CheckoutProviderOption[];
@@ -10,6 +16,7 @@ const props = defineProps<{
   disabled?: boolean;
   theme?: ReevitTheme;
   selectedMethod?: PaymentMethod | null;
+  country?: string;
 }>();
 
 const emit = defineEmits<{
@@ -18,18 +25,20 @@ const emit = defineEmits<{
 }>();
 
 const providerLogos: Record<string, string> = {
-  paystack: 'https://reevit.io/images/providers/paystack.png',
-  stripe: 'https://reevit.io/images/providers/stripe.png',
-  flutterwave: 'https://reevit.io/images/providers/flutterwave.png',
-  hubtel: 'https://reevit.io/images/providers/hubtel.png',
-  monnify: 'https://reevit.io/images/providers/monnify.png',
-  mpesa: 'https://reevit.io/images/providers/mpesa.png',
+  paystack: paystackLogo,
+  stripe: stripeLogo,
+  flutterwave: flutterwaveLogo,
+  hubtel: hubtelLogo,
+  monnify: monnifyLogo,
+  mpesa: mpesaLogo,
 };
 
 const methodLabels: Record<PaymentMethod, string> = {
   card: 'Card',
   mobile_money: 'Mobile Money',
   bank_transfer: 'Bank Transfer',
+  apple_pay: 'Apple Pay',
+  google_pay: 'Google Pay',
 };
 
 const formatMethods = (methods: PaymentMethod[]): string => {
@@ -42,6 +51,25 @@ const sanitizeMethods = (providerId: string, methods: PaymentMethod[]): PaymentM
     return methods.filter((method) => method === 'card' || method === 'mobile_money');
   }
   return methods;
+};
+
+const selectedTheme = computed(() => {
+  if (!props.theme) return undefined;
+  return {
+    backgroundColor: props.theme.selectedBackgroundColor,
+    textColor: props.theme.selectedTextColor,
+    descriptionColor: props.theme.selectedDescriptionColor,
+    borderColor: props.theme.selectedBorderColor,
+  };
+});
+
+const accordionContentStyle = computed(() => {
+  if (!props.theme?.selectedBorderColor) return undefined;
+  return { borderTop: `1px solid ${props.theme.selectedBorderColor}` };
+});
+
+const resolveCountry = (provider: CheckoutProviderOption): string => {
+  return provider.countries?.[0] || props.country || 'GH';
 };
 </script>
 
@@ -80,7 +108,7 @@ const sanitizeMethods = (providerId: string, methods: PaymentMethod[]): PaymentM
             </span>
           </span>
           <div class="reevit-psp-option__content">
-            <span class="reevit-psp-option__name">{{ provider.name }}</span>
+            <span class="reevit-psp-option__name">Pay with {{ provider.name }}</span>
             <span class="reevit-psp-option__methods">
               {{ formatMethods(sanitizeMethods(provider.provider, provider.methods)) }}
             </span>
@@ -88,7 +116,11 @@ const sanitizeMethods = (providerId: string, methods: PaymentMethod[]): PaymentM
         </button>
 
         <!-- Expanded Payment Methods -->
-        <div v-if="selectedProvider === provider.provider" class="reevit-psp-accordion__content reevit-animate-fade-in">
+        <div
+          v-if="selectedProvider === provider.provider"
+          class="reevit-psp-accordion__content reevit-animate-fade-in"
+          :style="accordionContentStyle"
+        >
           <div class="reevit-psp-methods">
             <PaymentMethodSelector
               :methods="sanitizeMethods(provider.provider, provider.methods)"
@@ -96,6 +128,9 @@ const sanitizeMethods = (providerId: string, methods: PaymentMethod[]): PaymentM
               :provider="provider.provider"
               :show-label="false"
               layout="list"
+              :disabled="disabled"
+              :country="resolveCountry(provider)"
+              :selected-theme="selectedTheme"
               @select="emit('methodSelect', $event)"
             />
           </div>

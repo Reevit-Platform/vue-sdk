@@ -125,6 +125,10 @@ function normalizeBranding(branding?: Record<string, unknown>): ReevitTheme {
   setIf('pspSelectorTextColor', getString(raw.pspSelectorTextColor ?? raw.psp_selector_text_color));
   setIf('pspSelectorBorderColor', getString(raw.pspSelectorBorderColor ?? raw.psp_selector_border_color));
   setIf('pspSelectorUseBorder', getBoolean(raw.pspSelectorUseBorder ?? raw.psp_selector_use_border));
+  setIf('selectedBackgroundColor', getString(raw.selectedBackgroundColor ?? raw.selected_background_color));
+  setIf('selectedTextColor', getString(raw.selectedTextColor ?? raw.selected_text_color));
+  setIf('selectedDescriptionColor', getString(raw.selectedDescriptionColor ?? raw.selected_description_color));
+  setIf('selectedBorderColor', getString(raw.selectedBorderColor ?? raw.selected_border_color));
 
   return theme as ReevitTheme;
 }

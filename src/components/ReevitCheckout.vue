@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
-import { createThemeVariables, createReevitClient } from '@reevit/core';
+import { createThemeVariables, createReevitClient, detectCountryFromCurrency, formatAmount } from '@reevit/core';
 import type { ReevitTheme, PaymentIntent, PaymentMethod, PSPType } from '@reevit/core';
 
 import ProviderSelector from './ProviderSelector.vue';
@@ -26,11 +26,12 @@ const props = defineProps<{
   metadata?: Record<string, unknown>;
   customFields?: Record<string, unknown>;
   paymentLinkCode?: string;
-  paymentMethods?: ('card' | 'mobile_money' | 'bank_transfer')[];
+  paymentMethods?: PaymentMethod[];
   theme?: ReevitTheme;
   isOpen?: boolean;
   apiBaseUrl?: string;
   initialPaymentIntent?: any;
+  successDelayMs?: number;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +44,7 @@ const {
   status,
   paymentIntent,
   selectedMethod,
+  result,
   error,
   isLoading,
   isReady,
@@ -68,13 +70,36 @@ const {
     initialPaymentIntent: props.initialPaymentIntent,
   },
   apiBaseUrl: props.apiBaseUrl,
-  onSuccess: (result) => emit('success', result),
+  onSuccess: (result) => {
+    clearSuccessTimeout();
+    const delay = successDelayMs.value;
+    if (delay <= 0) {
+      emit('success', result);
+      handleClose();
+      return;
+    }
+
+    successTimeout.value = setTimeout(() => {
+      emit('success', result);
+      handleClose();
+      successTimeout.value = null;
+    }, delay);
+  },
   onError: (err) => emit('error', err),
   onClose: () => emit('close'),
 });
 
 const isModalVisible = ref(props.isOpen ?? false);
 const selectedProvider = ref<PSPType | null>(null);
+const successTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+const successDelayMs = computed(() => props.successDelayMs ?? 5000);
+
+const clearSuccessTimeout = () => {
+  if (successTimeout.value) {
+    clearTimeout(successTimeout.value);
+    successTimeout.value = null;
+  }
+};
 
 const pspNames: Record<string, string> = {
   hubtel: 'Hubtel',
@@ -114,6 +139,7 @@ watch([isModalVisible, paymentIntent, selectedMethod], ([visible, intent, method
 });
 
 const handleClose = () => {
+  clearSuccessTimeout();
   isModalVisible.value = false;
   closeSdk();
   selectedProvider.value = null;
@@ -343,6 +369,15 @@ const resolvedTheme = computed(() => ({
 }));
 const themeVars = computed(() => createThemeVariables(resolvedTheme.value));
 const themeMode = computed(() => resolvedTheme.value?.darkMode);
+const fallbackCountry = computed(() => detectCountryFromCurrency(props.currency));
+const formattedAmount = computed(() => formatAmount(props.amount, props.currency));
+const successReference = computed(() => result.value?.reference || paymentIntent.value?.reference || '');
+const selectedTheme = computed(() => ({
+  backgroundColor: resolvedTheme.value?.selectedBackgroundColor,
+  textColor: resolvedTheme.value?.selectedTextColor,
+  descriptionColor: resolvedTheme.value?.selectedDescriptionColor,
+  borderColor: resolvedTheme.value?.selectedBorderColor,
+}));
 
 
 // Lock scroll when open
@@ -356,6 +391,7 @@ watch(isModalVisible, (val: any) => {
 
 onUnmounted(() => {
   document.body.style.overflow = '';
+  clearSuccessTimeout();
 });
 
 // Computed helpers for template to avoid .value clutter
@@ -384,7 +420,7 @@ const ready = computed(() => isReady.value);
       <div v-if="isModalVisible" class="reevit-modal-overlay" @click.self="handleClose">
         <div
           class="reevit-modal-content"
-          :class="{ 'reevit-modal--dark': themeMode }"
+          :class="{ 'reevit-modal--dark': themeMode, 'reevit-modal--success': currentStatus === 'success' }"
           :style="themeVars"
         >
           <button class="reevit-modal-close" @click="handleClose" aria-label="Close">
@@ -405,23 +441,24 @@ const ready = computed(() => isReady.value);
           </div>
 
           <div class="reevit-modal-body">
-            <div v-if="currentStatus === 'loading'" class="reevit-loading-state">
+            <div v-if="currentStatus === 'loading'" class="reevit-loading">
               <div class="reevit-spinner reevit-spinner--large"></div>
               <p>Initializing payment...</p>
             </div>
 
-            <div v-else-if="currentStatus === 'failed' && currentError" class="reevit-error-state">
-              <div class="reevit-error-icon">⚠️</div>
+            <div v-else-if="currentStatus === 'failed' && currentError" class="reevit-error">
+              <div class="reevit-error__icon">✕</div>
               <h3>Payment Failed</h3>
               <p>{{ currentError.message }}</p>
               <button class="reevit-retry-btn" @click="initialize()">Retry</button>
             </div>
 
-            <div v-else-if="currentStatus === 'success'" class="reevit-success-state">
-              <div class="reevit-success-icon">✅</div>
-              <h3>Payment Successful</h3>
-              <p>Thank you for your payment.</p>
-              <button class="reevit-done-btn" @click="handleClose">Done</button>
+            <div v-else-if="currentStatus === 'success'" class="reevit-success">
+              <div class="reevit-success__icon">✓</div>
+              <h3>Payment Successful!</h3>
+              <p class="reevit-success__amount">{{ formattedAmount }}</p>
+              <p v-if="successReference" class="reevit-success__reference">Reference: {{ successReference }}</p>
+              <p class="reevit-success__redirect">Redirecting in a moment...</p>
             </div>
 
             <template v-else-if="ready">
@@ -433,6 +470,7 @@ const ready = computed(() => isReady.value);
                     :disabled="loading"
                     :theme="resolvedTheme"
                     :selected-method="currentSelectedMethod"
+                    :country="fallbackCountry"
                     @select="handleProviderSelect"
                     @method-select="handleSelectMethod"
                   >
@@ -484,6 +522,9 @@ const ready = computed(() => isReady.value);
                     :provider="activeProvider"
                     :show-label="false"
                     layout="grid"
+                    :disabled="loading"
+                    :country="fallbackCountry"
+                    :selected-theme="selectedTheme"
                     @select="handleSelectMethod"
                   />
 

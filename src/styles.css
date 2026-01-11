@@ -74,7 +74,7 @@
   box-shadow: var(--reevit-shadow);
   width: 100%;
   max-width: 440px;
-  min-height:380px;
+  min-height:360px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -428,6 +428,128 @@
 .reevit-method-option--list.reevit-method-option--selected .reevit-method-option__chevron {
   opacity: 1;
   transform: translateX(0);
+}
+
+/* Payment method logos */
+.reevit-method-option__logos {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reevit-method-option__logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.reevit-method-option--grid .reevit-method-option__logos {
+  gap: 6px;
+}
+
+.reevit-method-option--grid .reevit-method-option__logo-img {
+  width: 32px;
+  height: 32px;
+}
+
+/* ===== STATES ===== */
+.reevit-loading,
+.reevit-success,
+.reevit-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  gap: 12px;
+}
+
+.reevit-success__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--reevit-success);
+  color: #ffffff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: reevit-pop 0.3s ease-out;
+}
+
+.reevit-error__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--reevit-error);
+  color: #ffffff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes reevit-pop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.reevit-success h3,
+.reevit-error h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--reevit-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.reevit-success p,
+.reevit-error p {
+  font-size: 12px;
+  color: var(--reevit-text-secondary);
+  margin: 0;
+}
+
+.reevit-success__amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--reevit-text);
+}
+
+.reevit-success__reference,
+.reevit-success__redirect {
+  font-size: 12px;
+  color: var(--reevit-text-secondary);
+}
+
+/* ===== SPINNER ===== */
+.reevit-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--reevit-border);
+  border-top-color: var(--reevit-text);
+  border-radius: 50%;
+  animation: reevit-spin 0.7s linear infinite;
+}
+
+@keyframes reevit-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Large spinner for loading states */
+.reevit-loading .reevit-spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 2px;
+}
+
+.reevit-loading p {
+  font-size: 12px;
+  color: var(--reevit-text-secondary);
+  margin: 0;
 }
 
 /* ===== BUTTONS ===== */
