@@ -5,7 +5,7 @@ Vue 3 SDK for integrating Reevit unified payments into your application.
 ## Installation
 
 ```bash
-npm install @reevit/vue @reevit/core
+npm install @reevit/vue@0.5.0 @reevit/core@0.5.0
 ```
 
 ## Quick Start
@@ -241,7 +241,7 @@ const result = await initiateMPesaSTKPush(
 
 | Provider | Countries | Payment Methods |
 |----------|-----------|-----------------|
-| Paystack | NG, GH, ZA, KE | Card, Mobile Money, Bank Transfer |
+| Paystack | NG, GH: 'MTN, Telecel, AirtelTigo Money', Bank Transfer |
 | Flutterwave | NG, GH, KE, ZA + | Card, Mobile Money, Bank Transfer |
 | Hubtel | GH | Mobile Money |
 | Stripe | Global (50+) | Card, Apple Pay, Google Pay |
