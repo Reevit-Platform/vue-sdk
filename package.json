@@ -44,7 +44,7 @@
     "vue": "^3.3.0"
   },
   "dependencies": {
-    "@reevit/core": "^0.4.8",
+    "@reevit/core": "^0.4.7",
     "@hubteljs/checkout": "^1.0.4"
   },
   "devDependencies": {
