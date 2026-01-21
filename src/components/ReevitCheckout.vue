@@ -53,7 +53,6 @@ const {
   handlePspSuccess,
   handlePspError,
   close: closeSdk,
-  reset,
 } = useReevit({
   config: {
     publicKey: props.publicKey,
@@ -122,21 +121,8 @@ const handleOpen = () => {
   }
 };
 
-// Auto-advance logic
-watch([isModalVisible, paymentIntent, selectedMethod], ([visible, intent, method]) => {
-  if (visible && intent && method) {
-    const psp = (selectedProvider.value || intent.recommendedPsp || 'paystack').toLowerCase();
-    const needsPhone = psp.includes('mpesa');
-
-    if (method === 'card') {
-      handleProcessPayment(null);
-    } else if (method === 'mobile_money') {
-      if (!needsPhone || props.phone) {
-        handleProcessPayment(null);
-      }
-    }
-  }
-});
+// NOTE: Auto-advance logic removed to allow users to see and select payment methods
+// Users must explicitly click a "Pay" button to proceed to the PSP bridge
 
 const handleClose = () => {
   clearSuccessTimeout();
@@ -223,11 +209,10 @@ watch([availableMethods, selectedMethod], ([methods, current]) => {
   }
 });
 
-const handleProviderSelect = (provider: string) => {
+const handleProviderSelect = async (provider: string) => {
   // Toggle behavior - clicking same PSP collapses it
   if (provider === selectedProvider.value) {
     selectedProvider.value = null;
-    reset();
     return;
   }
 
@@ -239,8 +224,13 @@ const handleProviderSelect = (provider: string) => {
       : methods[0];
 
   selectedProvider.value = provider as PSPType;
-  reset();
-  initialize(methodForInit, { preferredProvider: provider, allowedProviders: [provider] });
+
+  // Select the appropriate method for this provider
+  // No need to re-initialize - we already have the payment intent with available_psps
+  // Re-initializing would create a duplicate payment
+  if (methodForInit) {
+    selectMethod(methodForInit);
+  }
 };
 
 const handleSelectMethod = (method: any) => {
@@ -261,6 +251,13 @@ const handleProcessPayment = async (data: any) => {
         amount: props.amount,
         currency: props.currency,
         ref: intent.id,
+        metadata: {
+          ...props.metadata,
+          org_id: intent.orgId ?? (props.metadata?.org_id as string),
+          payment_id: intent.id,
+          connection_id: intent.connectionId ?? (props.metadata?.connection_id as string),
+          customer_phone: data?.phone || props.phone,
+        },
         onSuccess: (res) => handlePspSuccess(res),
         onClose: () => {},
       });
@@ -303,6 +300,13 @@ const handleProcessPayment = async (data: any) => {
         customer: {
           email: props.email || '',
           phone_number: data?.phone || props.phone,
+        },
+        meta: {
+          ...props.metadata,
+          org_id: intent.orgId ?? (props.metadata?.org_id as string),
+          payment_id: intent.id,
+          connection_id: intent.connectionId ?? (props.metadata?.connection_id as string),
+          customer_phone: data?.phone || props.phone,
         },
         callback: (res) => handlePspSuccess(res),
         onclose: () => {},
@@ -423,24 +427,38 @@ const ready = computed(() => isReady.value);
           :class="{ 'reevit-modal--dark': themeMode, 'reevit-modal--success': currentStatus === 'success' }"
           :style="themeVars"
         >
-          <button class="reevit-modal-close" @click="handleClose" aria-label="Close">
-            &times;
-          </button>
-
-          <div class="reevit-modal-header">
+          <div class="reevit-modal__header">
             <div class="reevit-modal__branding">
-              <img 
-                :src="resolvedTheme.logoUrl || 'https://i.imgur.com/bzUR5Lm.png'" 
-                :alt="resolvedTheme.companyName || 'Reevit'" 
+              <img
+                v-if="resolvedTheme.logoUrl"
+                :src="resolvedTheme.logoUrl"
+                :alt="resolvedTheme.companyName || ''"
                 class="reevit-modal__logo"
               />
+              <span
+                v-else-if="resolvedTheme.companyName"
+                class="reevit-modal__logo-fallback"
+              >
+                {{ resolvedTheme.companyName.charAt(0) }}
+              </span>
               <span v-if="resolvedTheme.companyName" class="reevit-modal__brand-name">
                 {{ resolvedTheme.companyName }}
               </span>
             </div>
+            <button class="reevit-modal__close" @click="handleClose" aria-label="Close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
-          <div class="reevit-modal-body">
+          <div class="reevit-modal__amount">
+            <span class="reevit-modal__amount-label">Pay</span>
+            <span class="reevit-modal__amount-value">{{ formattedAmount }}</span>
+          </div>
+
+          <div class="reevit-modal__content">
             <div v-if="currentStatus === 'loading'" class="reevit-loading">
               <div class="reevit-spinner reevit-spinner--large"></div>
               <p>Initializing payment...</p>
@@ -566,12 +584,14 @@ const ready = computed(() => isReady.value);
             </template>
           </div>
 
-          <div class="reevit-modal-footer">
-            <div class="reevit-trust-badges">
-              <span>PCI DSS Compliant</span>
-              <span>•</span>
-              <span>SSL Secure</span>
-            </div>
+          <div class="reevit-modal__footer">
+            <span class="reevit-modal__secured">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              Secured by <span class="reevit-modal__secured-brand">Reevit</span>
+            </span>
           </div>
         </div>
       </div>

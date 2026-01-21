@@ -155,6 +155,7 @@ export interface FlutterwaveConfig {
     description?: string;
     logo?: string;
   };
+  meta?: Record<string, unknown>;
   callback: (response: { transaction_id: number; tx_ref: string;[key: string]: unknown }) => void;
   onclose: () => void;
 }
@@ -291,6 +292,7 @@ export async function openFlutterwaveModal(config: FlutterwaveConfig): Promise<v
     customer: config.customer,
     payment_options: config.payment_options,
     customizations: config.customizations,
+    meta: config.meta,
     callback: config.callback,
     onclose: config.onclose,
   });

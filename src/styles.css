@@ -104,37 +104,49 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px;
-  border-bottom: 1px solid var(--reevit-border);
-  background: linear-gradient(120deg, rgba(14, 165, 233, 0.08), transparent 55%);
+  padding: 18px 20px 12px;
+  background: var(--reevit-background);
 }
 
 .reevit-modal__branding {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .reevit-modal__logo {
-  height: 18px;
-  width: auto;
+  height: 28px;
+  width: 28px;
   object-fit: contain;
+  border-radius: 8px;
+}
+
+.reevit-modal__logo-fallback {
+  height: 28px;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--reevit-primary);
+  color: var(--reevit-primary-foreground);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .reevit-modal__brand-name {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--reevit-text);
 }
 
 .reevit-modal__close, .reevit-modal-close {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--reevit-radius-sm);
-  border: 1px solid var(--reevit-border);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
   background: transparent;
-  color: var(--reevit-text-secondary);
-  font-size: 14px;
+  color: var(--reevit-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -143,16 +155,15 @@
 }
 
 .reevit-modal__close:hover, .reevit-modal-close:hover {
-  background: var(--reevit-surface);
   color: var(--reevit-text);
-  border-color: var(--reevit-text-secondary);
+  opacity: 0.7;
 }
 
 /* Modal Amount */
 .reevit-modal__amount {
-  padding: 28px 22px;
-  text-align: center;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(14, 165, 233, 0.04));
+  padding: 0 20px 16px;
+  text-align: left;
+  background: var(--reevit-background);
   border-bottom: 1px solid var(--reevit-border);
 }
 
@@ -160,17 +171,17 @@
   display: block;
   font-size: 11px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--reevit-text-secondary);
-  margin-bottom: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--reevit-muted);
+  margin-bottom: 2px;
 }
 
 .reevit-modal__amount-value {
   display: block;
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--reevit-text);
 }
 
@@ -178,22 +189,53 @@
 .reevit-modal__content, .reevit-modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 0 20px 20px;
+  background: var(--reevit-background);
 }
 
 /* Modal Footer */
 .reevit-modal__footer, .reevit-modal-footer {
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-top: 1px solid var(--reevit-border);
   text-align: center;
-  background: var(--reevit-surface);
+  background: var(--reevit-background);
 }
 
 .reevit-modal__secured, .reevit-trust-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
+  font-weight: 400;
+  color: var(--reevit-muted);
+  letter-spacing: 0;
+}
+
+.reevit-modal__secured svg {
+  flex-shrink: 0;
+}
+
+.reevit-modal__secured-brand {
   font-weight: 500;
-  color: var(--reevit-text-secondary);
-  letter-spacing: 0.02em;
+}
+
+/* ===== PSP SELECTOR ===== */
+.reevit-psp-selector {
+  margin-bottom: 0;
+}
+
+.reevit-psp-selector__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--reevit-text);
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
+.reevit-psp-selector__options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* ===== PSP ACCORDION ===== */
@@ -208,12 +250,12 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
-  border-radius: 12px;
+  padding: 16px 18px;
+  border-radius: var(--reevit-radius);
   border: 1px solid var(--reevit-border);
   background: var(--reevit-surface);
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
   width: 100%;
   position: relative;
@@ -221,31 +263,131 @@
 
 .reevit-psp-option:hover:not(.reevit-psp-option--disabled):not(.reevit-psp-option--selected) {
   border-color: color-mix(in srgb, var(--reevit-primary) 50%, var(--reevit-border));
-  background: color-mix(in srgb, var(--reevit-primary) 4%, var(--reevit-surface));
+  background: color-mix(in srgb, var(--reevit-primary) 3%, var(--reevit-surface));
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.08);
 }
 
 .reevit-psp-option--selected {
-  border-radius: 12px 12px 0 0 !important;
-  box-shadow: none;
-  border-color: color-mix(in srgb, var(--reevit-primary) 40%, var(--reevit-border));
-  border-bottom-color: transparent;
+  border-radius: var(--reevit-radius) var(--reevit-radius) 0 0;
+  border-color: var(--reevit-primary);
   background: color-mix(in srgb, var(--reevit-primary) 5%, var(--reevit-surface));
-  position: relative;
-  z-index: 1;
+}
+
+.reevit-psp-option--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reevit-psp-option__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--reevit-background);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid var(--reevit-border);
+}
+
+.reevit-psp-option__logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.reevit-psp-option__logo-fallback {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--reevit-text);
+}
+
+.reevit-psp-option__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reevit-psp-option__name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--reevit-text);
+  letter-spacing: -0.01em;
+}
+
+.reevit-psp-option__methods {
+  display: block;
+  font-size: 13px;
+  color: var(--reevit-text-secondary);
+  margin-top: 3px;
+}
+
+.reevit-psp-option__chevron {
+  color: var(--reevit-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.reevit-psp-option:hover .reevit-psp-option__chevron {
+  color: var(--reevit-primary);
+  transform: translateX(2px);
 }
 
 .reevit-psp-accordion__content {
   padding: 16px;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--reevit-primary) 40%, var(--reevit-border));
+  background: var(--reevit-surface);
+  border: 1px solid var(--reevit-primary);
   border-top: none;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--reevit-radius) var(--reevit-radius);
   margin-top: 0;
   overflow: hidden;
   animation: reevit-accordion-expand 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top;
   position: relative;
+}
+
+.reevit-psp-accordion__method-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--reevit-border);
+}
+
+/* Back button */
+.reevit-psp-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  background: var(--reevit-background);
+  border: 1px solid var(--reevit-border);
+  border-radius: var(--reevit-radius-sm);
+  color: var(--reevit-text-secondary);
+  font-family: var(--reevit-font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reevit-psp-back-button:hover {
+  background: var(--reevit-surface);
+  border-color: var(--reevit-text-secondary);
+  color: var(--reevit-text);
+}
+
+.reevit-psp-back-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reevit-psp-back-button svg {
+  flex-shrink: 0;
+}
+
+.reevit-psp-methods {
+  margin-top: 4px;
 }
 
 @keyframes reevit-accordion-expand {
@@ -262,6 +404,19 @@
 }
 
 /* ===== PAYMENT METHOD SELECTOR ===== */
+.reevit-method-selector {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.reevit-method-selector__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--reevit-text);
+  opacity: 0.7;
+  margin-bottom: 12px;
+}
+
 .reevit-method-selector__options--grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -272,8 +427,12 @@
 .reevit-method-selector__options--list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   width: 100%;
+  border: 1px solid var(--reevit-border);
+  border-radius: var(--reevit-radius);
+  overflow: hidden;
+  background: var(--reevit-surface);
 }
 
 .reevit-method-option--grid {
@@ -344,31 +503,30 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-start;
+  gap: 14px;
   padding: 14px 16px;
-  background: color-mix(in srgb, var(--reevit-text) 4%, transparent);
-  border: 1px solid transparent;
-  border-radius: 12px;
-  box-shadow: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--reevit-border);
+  border-radius: 0;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   text-align: left;
   width: 100%;
   position: relative;
-  overflow: hidden;
+}
+
+.reevit-method-option--list:last-child {
+  border-bottom: none;
 }
 
 .reevit-method-option--list:hover:not(.reevit-method-option--disabled) {
-  border-color: color-mix(in srgb, var(--reevit-primary) 60%, var(--reevit-border));
-  background: color-mix(in srgb, var(--reevit-primary) 8%, var(--reevit-surface));
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px -18px rgba(15, 23, 42, 0.35);
+  background: color-mix(in srgb, var(--reevit-primary) 4%, transparent);
 }
 
 .reevit-method-option--list.reevit-method-option--selected {
-  border-color: var(--reevit-primary);
-  background: color-mix(in srgb, var(--reevit-primary) 12%, var(--reevit-surface));
-  box-shadow: 0 8px 20px -16px color-mix(in srgb, var(--reevit-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--reevit-primary) 6%, transparent);
 }
 
 .reevit-method-option--list .reevit-method-option__icon-wrapper {
@@ -376,58 +534,58 @@
   align-items: center;
   justify-content: flex-start;
   min-width: fit-content;
-  height: 50px;
+  height: 40px;
   background: transparent;
-  border-radius: 14px;
   flex-shrink: 0;
-  transition: all 0.2s ease;
-  font-size: 24px;
-}
-
-.reevit-method-option--list:hover .reevit-method-option__icon-wrapper {
-  background: color-mix(in srgb, var(--reevit-primary) 12%, transparent);
-  transform: scale(1.03);
-}
-
-.reevit-method-option--list.reevit-method-option--selected .reevit-method-option__icon-wrapper {
-  background: color-mix(in srgb, var(--reevit-primary) 16%, transparent);
-  transform: scale(1.05);
+  font-size: 22px;
 }
 
 .reevit-method-option--list .reevit-method-option__content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .reevit-method-option--list .reevit-method-option__label {
   display: block;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--reevit-text);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   letter-spacing: -0.01em;
 }
 
 .reevit-method-option--list .reevit-method-option__description {
   display: block;
-  font-size: 14px;
-  color: var(--reevit-text);
-  opacity: 0.6;
+  font-size: 13px;
+  color: var(--reevit-text-secondary);
   line-height: 1.4;
 }
 
 .reevit-method-option--list .reevit-method-option__chevron {
+  color: var(--reevit-muted);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.reevit-method-option--list:hover .reevit-method-option__chevron {
   color: var(--reevit-primary);
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(2px);
+}
+
+.reevit-method-option--list .reevit-method-option__check {
+  color: var(--reevit-primary);
   flex-shrink: 0;
 }
 
-.reevit-method-option--list:hover .reevit-method-option__chevron,
 .reevit-method-option--list.reevit-method-option--selected .reevit-method-option__chevron {
-  opacity: 1;
-  transform: translateX(0);
+  display: none;
+}
+
+.reevit-method-option--list:not(.reevit-method-option--selected) .reevit-method-option__check {
+  display: none;
 }
 
 /* Payment method logos */
