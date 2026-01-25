@@ -5,7 +5,7 @@ Vue 3 SDK for integrating Reevit unified payments into your application.
 ## Installation
 
 ```bash
-npm install @reevit/vue@0.5.0 @reevit/core@0.5.0
+npm install @reevit/vue @reevit/core
 ```
 
 ## Quick Start
