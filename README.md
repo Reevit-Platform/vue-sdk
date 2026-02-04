@@ -32,6 +32,7 @@ const handleError = (error: any) => {
     :amount="10000"
     currency="GHS"
     email="customer@example.com"
+    idempotencyKey="order_12345"
     @success="handleSuccess"
     @error="handleError"
   >
@@ -46,6 +47,19 @@ const handleError = (error: any) => {
     </template>
   </ReevitCheckout>
 </template>
+```
+
+## Idempotency
+
+Provide an `idempotencyKey` tied to your order/cart to avoid duplicate intent creation and enable safe retries.
+
+```vue
+<ReevitCheckout
+  publicKey="pk_test_xxx"
+  :amount="10000"
+  currency="GHS"
+  idempotencyKey="order_12345"
+/>
 ```
 
 ## Controlled Modal

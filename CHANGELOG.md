@@ -2,6 +2,13 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [Unreleased] - 2026-02-04
+
+### 🛠 Improvements
+
+- Added `idempotencyKey` support in checkout config and intent initialization.
+- Added in-flight dedupe for payment intent creation.
+
 ## [0.5.0] - 2026-01-11
 
 ### 🚀 New Features
