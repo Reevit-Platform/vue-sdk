@@ -262,6 +262,13 @@ const result = await initiateMPesaSTKPush(
 | Monnify | NG | Card, Bank Transfer, USSD |
 | M-Pesa | KE, TZ | Mobile Money (STK Push) |
 
+## Release Notes
+
+### v0.7.0
+
+- Updated `@reevit/core` dependency to v0.7.0
+- Version alignment across all Reevit SDKs
+
 ## License
 
 MIT © Reevit
