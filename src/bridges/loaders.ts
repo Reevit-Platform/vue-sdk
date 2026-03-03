@@ -114,6 +114,65 @@ export function loadMonnifyScript(): Promise<void> {
   return loadScript('https://sdk.monnify.com/plugin/monnify.js', 'monnify-script');
 }
 
+const DEFAULT_REEVIT_API_BASE_URL = 'https://api.reevit.io';
+
+function getHubtelCallbackURL(apiBaseUrl?: string): string {
+  return `${apiBaseUrl || DEFAULT_REEVIT_API_BASE_URL}/v1/webhooks/incoming/hubtel`;
+}
+
+function parseHubtelCallbackPayload(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== 'object') {
+    return {};
+  }
+
+  const raw = input as Record<string, unknown>;
+  const nested = raw.data;
+  if (typeof nested === 'string') {
+    try {
+      const parsed = JSON.parse(nested) as unknown;
+      if (parsed && typeof parsed === 'object') {
+        return { ...raw, ...(parsed as Record<string, unknown>) };
+      }
+    } catch {
+      // Ignore parsing failures and return raw data.
+    }
+  } else if (nested && typeof nested === 'object') {
+    return { ...raw, ...(nested as Record<string, unknown>) };
+  }
+
+  return raw;
+}
+
+function readHubtelField(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return '';
+}
+
+function normalizeHubtelSuccessPayload(input: unknown, fallbackReference: string): Record<string, unknown> {
+  const payload = parseHubtelCallbackPayload(input);
+  const transactionReference = readHubtelField(payload, [
+    'transactionId',
+    'transaction_id',
+    'transactionReference',
+    'paymentReference',
+    'checkoutId',
+  ]);
+  const clientReference = readHubtelField(payload, ['clientReference', 'client_reference']) || fallbackReference;
+
+  return {
+    ...payload,
+    reference: clientReference,
+    pspReference: transactionReference || clientReference,
+    hubtel_raw: input,
+  };
+}
+
 export interface PaystackConfig {
   key: string;
   email: string;
@@ -129,7 +188,9 @@ export interface HubtelConfig {
   clientId: string;
   purchaseDescription: string;
   amount: number;
+  apiBaseUrl?: string;
   callbackUrl?: string;
+  clientReference?: string;
   customerPhone?: string;
   customerEmail?: string;
   hubtelSessionToken?: string;
@@ -239,7 +300,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
     amount: config.amount,
     purchaseDescription: config.purchaseDescription,
     customerPhoneNumber: config.customerPhone || '',
-    clientReference: `hubtel_${Date.now()}`,
+    clientReference: config.clientReference || `hubtel_${Date.now()}`,
     ...(methodPreference ? { paymentMethod: methodPreference } : {}),
   };
 
@@ -248,7 +309,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
 
   const checkoutConfig = {
     branding: 'enabled' as const,
-    callbackUrl: config.callbackUrl || (typeof window !== 'undefined' ? window.location.href : ''),
+    callbackUrl: config.callbackUrl || getHubtelCallbackURL(config.apiBaseUrl),
     merchantAccount: typeof config.clientId === 'string'
       ? parseInt(config.clientId, 10)
       : config.clientId,
@@ -261,7 +322,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
     config: checkoutConfig,
     callBacks: {
       onPaymentSuccess: (data: any) => {
-        config.onSuccess(data);
+        config.onSuccess(normalizeHubtelSuccessPayload(data, purchaseInfo.clientReference));
         checkout.closePopUp();
       },
       onPaymentFailure: () => {
