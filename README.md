@@ -28,7 +28,7 @@ const handleError = (error: any) => {
 
 <template>
   <ReevitCheckout
-    publicKey="pk_test_xxx"
+    publicKey="pfk_test_xxx"
     :amount="10000"
     currency="GHS"
     email="customer@example.com"
@@ -55,7 +55,7 @@ Provide an `idempotencyKey` tied to your order/cart to avoid duplicate intent cr
 
 ```vue
 <ReevitCheckout
-  publicKey="pk_test_xxx"
+  publicKey="pfk_test_xxx"
   :amount="10000"
   currency="GHS"
   idempotencyKey="order_12345"
@@ -73,7 +73,7 @@ const open = ref(false);
 
 <template>
   <ReevitCheckout
-    publicKey="pk_test_your_key"
+    publicKey="pfk_test_your_key"
     :amount="10000"
     currency="GHS"
     :isOpen="open"
@@ -100,7 +100,7 @@ By default, the checkout shows a success screen for 5 seconds before calling `@s
     darkMode: false,
     borderRadius: '4px'
   }"
-  publicKey="pk_test_xxx"
+  publicKey="pfk_test_xxx"
   :amount="5000"
   currency="GHS"
 >
@@ -123,7 +123,7 @@ const {
   isLoading 
 } = useReevit({
   config: {
-    publicKey: 'pk_test_xxx',
+    publicKey: 'pfk_test_xxx',
     amount: 5000,
     currency: 'GHS',
   },
