@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
-import { createThemeVariables, createReevitClient, detectCountryFromCurrency, formatAmount } from '@reevit/core';
+import { createThemeVariables, createReevitClient, formatAmount, cn } from '@reevit/core';
 import type { ReevitTheme, PaymentIntent, PaymentMethod, PSPType } from '@reevit/core';
 
-import ProviderSelector from './ProviderSelector.vue';
-import PaymentMethodSelector from './PaymentMethodSelector.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
+import LoadingState from './LoadingState.vue';
 import {
   openPaystackPopup,
   openHubtelPopup,
@@ -14,6 +13,40 @@ import {
   openMonnifyModal,
   initiateMPesaSTKPush,
 } from '../bridges';
+
+import flutterwaveLogo from '../assets/providers/flutterwave.png';
+import hubtelLogo from '../assets/providers/hubtel.png';
+import monnifyLogo from '../assets/providers/monnify.png';
+import mpesaLogo from '../assets/providers/mpesa.png';
+import paystackLogo from '../assets/providers/paystack.png';
+import stripeLogo from '../assets/providers/stripe.png';
+
+/** PSP brand logos, keyed by provider id. */
+const PROVIDER_LOGOS: Record<string, string | undefined> = {
+  paystack: paystackLogo,
+  hubtel: hubtelLogo,
+  flutterwave: flutterwaveLogo,
+  monnify: monnifyLogo,
+  mpesa: mpesaLogo,
+  stripe: stripeLogo,
+};
+
+/** Short terminal-style code per payment method, used in the `NN / CODE` id line. */
+const METHOD_CODE: Record<string, string> = {
+  card: 'CARD',
+  mobile_money: 'MOMO',
+  bank_transfer: 'BANK',
+  apple_pay: 'APAY',
+  google_pay: 'GPAY',
+};
+
+const METHOD_NAME: Record<string, string> = {
+  card: 'CARD',
+  mobile_money: 'MOBILE MONEY',
+  bank_transfer: 'BANK TRANSFER',
+  apple_pay: 'APPLE PAY',
+  google_pay: 'GOOGLE PAY',
+};
 
 const props = defineProps<{
   publicKey?: string;
@@ -376,15 +409,8 @@ const resolvedTheme = computed(() => ({
 }));
 const themeVars = computed(() => createThemeVariables(resolvedTheme.value));
 const themeMode = computed(() => resolvedTheme.value?.darkMode);
-const fallbackCountry = computed(() => detectCountryFromCurrency(props.currency));
 const formattedAmount = computed(() => formatAmount(props.amount, props.currency));
 const successReference = computed(() => result.value?.reference || paymentIntent.value?.reference || '');
-const selectedTheme = computed(() => ({
-  backgroundColor: resolvedTheme.value?.selectedBackgroundColor,
-  textColor: resolvedTheme.value?.selectedTextColor,
-  descriptionColor: resolvedTheme.value?.selectedDescriptionColor,
-  borderColor: resolvedTheme.value?.selectedBorderColor,
-}));
 
 
 // Lock scroll when open
@@ -407,6 +433,38 @@ const currentError = computed(() => error.value);
 const currentSelectedMethod = computed(() => selectedMethod.value);
 const loading = computed(() => isLoading.value);
 const ready = computed(() => isReady.value);
+
+// Brutalist presentation helpers
+const brandName = computed(() => resolvedTheme.value?.companyName);
+const merchantLabel = computed(
+  () => (brandName.value || 'CHECKOUT').toUpperCase()
+);
+const dataTheme = computed<'dark' | 'light' | undefined>(() => {
+  const mode = themeMode.value;
+  if (typeof mode === 'boolean') {
+    return mode ? 'dark' : 'light';
+  }
+  if (typeof document !== 'undefined') {
+    if (document.documentElement.classList.contains('dark')) return 'dark';
+    if (document.documentElement.classList.contains('light')) return 'light';
+  }
+  return undefined;
+});
+const activeProviderId = computed(
+  () => providerOptions.value.find((p) => p.provider === activeProvider.value)?.provider
+);
+const needsMomoForm = computed(
+  () =>
+    currentSelectedMethod.value === 'mobile_money' &&
+    activeProvider.value.includes('mpesa') &&
+    !props.phone
+);
+const canPay = computed(
+  () => providerOptions.value.length > 0 && !!currentSelectedMethod.value
+);
+const countdownStyle = computed(() => ({
+  animationDuration: `${successDelayMs.value}ms`,
+}));
 </script>
 
 <template>
@@ -424,178 +482,181 @@ const ready = computed(() => isReady.value);
     </slot>
 
     <Teleport to="body">
-      <div v-if="isModalVisible" class="reevit-modal-overlay" @click.self="handleClose">
+      <div v-if="isModalVisible" class="reevit-brut-overlay" @click.self="handleClose">
         <div
-          class="reevit-modal-content"
-          :class="{ 'reevit-modal--dark': themeMode, 'reevit-modal--success': currentStatus === 'success' }"
+          class="reevit-brut__modal"
+          :class="{ 'reevit-brut__modal--success': currentStatus === 'success' }"
           :style="themeVars"
+          :data-reevit-theme="dataTheme"
+          role="dialog"
+          aria-modal="true"
         >
-          <div class="reevit-modal__header">
-            <div class="reevit-modal__branding">
-              <img
-                v-if="resolvedTheme.logoUrl"
-                :src="resolvedTheme.logoUrl"
-                :alt="resolvedTheme.companyName || ''"
-                class="reevit-modal__logo"
-              />
-              <span
-                v-else-if="resolvedTheme.companyName"
-                class="reevit-modal__logo-fallback"
-              >
-                {{ resolvedTheme.companyName.charAt(0) }}
-              </span>
-              <span v-if="resolvedTheme.companyName" class="reevit-modal__brand-name">
-                {{ resolvedTheme.companyName }}
-              </span>
+          <div class="reevit-brut__topbar">
+            <div class="reevit-brut__topbar-left">
+              <span class="reevit-brut__dot" />
+              <span>Reevit Checkout</span>
             </div>
-            <button class="reevit-modal__close" @click="handleClose" aria-label="Close">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+            <button class="reevit-brut__close" @click="handleClose" aria-label="Close">
+              [ESC]
             </button>
           </div>
 
-          <div class="reevit-modal__amount">
-            <span class="reevit-modal__amount-label">Pay</span>
-            <span class="reevit-modal__amount-value">{{ formattedAmount }}</span>
-          </div>
-
-          <div class="reevit-modal__content">
-            <div v-if="currentStatus === 'loading'" class="reevit-loading">
-              <div class="reevit-spinner reevit-spinner--large"></div>
-              <p>Initializing payment...</p>
+          <div class="reevit-brut__header">
+            <div class="reevit-brut__brand-line">
+              <img
+                v-if="resolvedTheme.logoUrl"
+                :src="resolvedTheme.logoUrl"
+                alt=""
+                class="reevit-brut__brand-logo"
+              />
+              <span
+                v-else-if="brandName"
+                class="reevit-brut__brand-fallback"
+              >
+                {{ brandName.charAt(0) }}
+              </span>
+              <span>MERCHANT: {{ merchantLabel }}</span>
             </div>
-
-            <div v-else-if="currentStatus === 'failed' && currentError" class="reevit-error">
-              <div class="reevit-error__icon">✕</div>
-              <h3>Payment Failed</h3>
-              <p>{{ currentError.message }}</p>
-              <button class="reevit-retry-btn" @click="initialize()">Retry</button>
-            </div>
-
-            <div v-else-if="currentStatus === 'success'" class="reevit-success">
-              <div class="reevit-success__icon">✓</div>
-              <h3>Payment Successful!</h3>
-              <p class="reevit-success__amount">{{ formattedAmount }}</p>
-              <p v-if="successReference" class="reevit-success__reference">Reference: {{ successReference }}</p>
-              <p class="reevit-success__redirect">Redirecting in a moment...</p>
-            </div>
-
-            <template v-else-if="ready">
-              <div class="reevit-method-step reevit-animate-slide-up">
-                <template v-if="providerOptions.length > 1">
-                  <ProviderSelector
-                    :providers="providerOptions"
-                    :selected-provider="selectedProvider"
-                    :disabled="loading"
-                    :theme="resolvedTheme"
-                    :selected-method="currentSelectedMethod"
-                    :country="fallbackCountry"
-                    @select="handleProviderSelect"
-                    @method-select="handleSelectMethod"
-                  >
-                    <template #method-content>
-                      <div v-if="currentSelectedMethod === 'card'" class="reevit-inline-action reevit-animate-fade-in">
-                        <p class="reevit-inline-action__hint">
-                          You'll be redirected to complete your card payment securely.
-                        </p>
-                        <button
-                          class="reevit-btn reevit-btn--primary"
-                          @click="handleProcessPayment(null)"
-                          :disabled="currentStatus === 'processing'"
-                        >
-                          Pay with Card
-                        </button>
-                      </div>
-                      <div v-else-if="currentSelectedMethod === 'mobile_money'" class="reevit-inline-action reevit-animate-fade-in">
-                        <template v-if="activeProvider.includes('mpesa') && !props.phone">
-                          <MobileMoneyForm
-                            :initial-phone="props.phone"
-                            :loading="currentStatus === 'processing'"
-                            hide-cancel
-                            @submit="handleProcessPayment"
-                          />
-                        </template>
-                        <template v-else>
-                          <p class="reevit-inline-action__hint">
-                            {{ activeProvider.includes('hubtel')
-                              ? 'Opens the Hubtel checkout with Mobile Money selected.'
-                              : `Continue to pay securely with Mobile Money via ${pspNames[activeProvider] || activeProvider}.` }}
-                          </p>
-                          <button
-                            class="reevit-btn reevit-btn--primary"
-                            @click="handleProcessPayment(null)"
-                            :disabled="currentStatus === 'processing'"
-                          >
-                            {{ activeProvider.includes('hubtel') ? 'Continue with Hubtel' : 'Pay with Mobile Money' }}
-                          </button>
-                        </template>
-                      </div>
-                    </template>
-                  </ProviderSelector>
-                </template>
-                
-                <template v-else>
-                  <PaymentMethodSelector
-                    :methods="availableMethods"
-                    :selected="currentSelectedMethod"
-                    :provider="activeProvider"
-                    :show-label="false"
-                    layout="grid"
-                    :disabled="loading"
-                    :country="fallbackCountry"
-                    :selected-theme="selectedTheme"
-                    @select="handleSelectMethod"
-                  />
-
-                  <div v-if="currentSelectedMethod" class="reevit-method-step__actions reevit-animate-slide-up">
-                    <div v-if="currentSelectedMethod === 'mobile_money' && activeProvider.includes('mpesa') && !props.phone">
-                      <MobileMoneyForm 
-                        :initial-phone="props.phone"
-                        :loading="currentStatus === 'processing'"
-                        @submit="handleProcessPayment"
-                        @cancel="selectMethod(null as any)"
-                      />
-                    </div>
-                    <div v-else class="reevit-card-info reevit-animate-fade-in">
-                      <p class="reevit-info-text">
-                        {{ currentSelectedMethod === 'card' 
-                          ? 'You will be redirected to complete your card payment securely.' 
-                          : activeProvider.includes('hubtel')
-                            ? 'Opens the Hubtel checkout with Mobile Money selected.'
-                            : `Continue to pay securely via ${pspNames[activeProvider] || activeProvider}.` }}
-                      </p>
-                      <button 
-                        class="reevit-submit-btn" 
-                        @click="handleProcessPayment(null)"
-                        :disabled="currentStatus === 'processing'"
-                      >
-                        <span v-if="currentStatus === 'processing'" class="reevit-spinner"></span>
-                        <span v-else>
-                          {{ currentSelectedMethod === 'card'
-                            ? 'Pay with Card'
-                            : activeProvider.includes('hubtel')
-                              ? 'Continue with Hubtel'
-                              : 'Pay with Mobile Money' }}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </template>
+            <div class="reevit-brut__amount-row">
+              <div class="reevit-brut__amount">
+                <span class="reevit-brut__amount-bracket">[</span>
+                {{ formattedAmount }}
+                <span class="reevit-brut__amount-bracket">]</span>
               </div>
-            </template>
+              <span class="reevit-brut__amount-tag">DUE NOW</span>
+            </div>
           </div>
 
-          <div class="reevit-modal__footer">
-            <span class="reevit-modal__secured">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          <!-- Loading -->
+          <LoadingState
+            v-if="currentStatus === 'loading'"
+            marker="PREPARING"
+            title="Setting up checkout"
+            message="This will only take a moment"
+          />
+
+          <!-- Processing -->
+          <LoadingState
+            v-else-if="currentStatus === 'processing'"
+            marker="PROCESSING"
+            title="Confirming your payment"
+          />
+
+          <!-- Success -->
+          <div v-else-if="currentStatus === 'success'" class="reevit-brut__state">
+            <span class="reevit-brut__state-marker">SUCCESS</span>
+            <div class="reevit-brut__check-block">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12l5 5L20 7" />
               </svg>
-              Secured by <span class="reevit-modal__secured-brand">Reevit</span>
-            </span>
+            </div>
+            <h3 class="reevit-brut__state-title">PAYMENT CAPTURED</h3>
+            <p class="reevit-brut__state-sub">
+              {{ formattedAmount }}<br />
+              <template v-if="successReference">REF: {{ successReference }}</template>
+            </p>
+            <div class="reevit-brut__countdown" :style="countdownStyle" />
           </div>
+
+          <!-- Error -->
+          <div v-else-if="currentStatus === 'failed' && currentError" class="reevit-brut__state">
+            <span class="reevit-brut__state-marker">DECLINED</span>
+            <div class="reevit-brut__error-block">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </div>
+            <h3 class="reevit-brut__state-title">PAYMENT FAILED</h3>
+            <p class="reevit-brut__state-sub">{{ currentError.message }}</p>
+            <button class="reevit-brut__cta" style="max-width: 260px" @click="initialize()">
+              <span>RETRY</span><span>&#8635;</span>
+            </button>
+          </div>
+
+          <!-- Select — processor grid + method grid + action -->
+          <template v-else-if="ready">
+            <div class="reevit-brut__body">
+              <div>
+                <div class="reevit-brut__section-label">PROCESSOR</div>
+                <div v-if="providerOptions.length === 0" class="reevit-brut__methods-empty">
+                  &gt; NO PROCESSORS AVAILABLE
+                </div>
+                <div v-else class="reevit-brut__providers">
+                  <button
+                    v-for="provider in providerOptions"
+                    :key="provider.provider"
+                    type="button"
+                    class="reevit-brut__provider"
+                    :data-selected="activeProviderId === provider.provider"
+                    :disabled="loading"
+                    @click="provider.provider !== selectedProvider && handleProviderSelect(provider.provider)"
+                  >
+                    <img
+                      v-if="PROVIDER_LOGOS[provider.provider.toLowerCase()]"
+                      class="reevit-brut__provider-logo"
+                      :src="PROVIDER_LOGOS[provider.provider.toLowerCase()]"
+                      alt=""
+                    />
+                    <span v-else class="reevit-brut__provider-fallback">
+                      {{ provider.name.charAt(0).toUpperCase() }}
+                    </span>
+                    <span class="reevit-brut__provider-name">{{ provider.name }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div class="reevit-brut__section-label">SELECT_METHOD</div>
+                <div
+                  v-if="providerOptions.length === 0 || availableMethods.length === 0"
+                  class="reevit-brut__methods-empty"
+                >
+                  &gt; SELECT A PROCESSOR ABOVE
+                </div>
+                <div v-else class="reevit-brut__methods">
+                  <button
+                    v-for="(method, index) in availableMethods"
+                    :key="method"
+                    type="button"
+                    :class="cn(
+                      'reevit-brut__method',
+                      availableMethods.length === 1 && 'reevit-brut__method--full'
+                    )"
+                    :data-selected="currentSelectedMethod === method"
+                    :disabled="loading"
+                    @click="handleSelectMethod(method)"
+                  >
+                    <span class="reevit-brut__method-id">
+                      {{ String(index + 1).padStart(2, '0') }} / {{ METHOD_CODE[method] }}
+                    </span>
+                    <span class="reevit-brut__method-name">{{ METHOD_NAME[method] }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <MobileMoneyForm
+                v-if="currentSelectedMethod && needsMomoForm"
+                :initial-phone="props.phone"
+                :loading="loading"
+                hide-cancel
+                @submit="handleProcessPayment"
+              />
+              <button
+                v-else
+                type="button"
+                class="reevit-brut__cta"
+                :disabled="!canPay || loading"
+                @click="handleProcessPayment(null)"
+              >
+                <span>MAKE PAYMENT</span>
+                <span>&rarr;</span>
+              </button>
+            </div>
+
+            <div class="reevit-brut__footer">
+              <span>Secured by Reevit</span>
+            </div>
+          </template>
         </div>
       </div>
     </Teleport>
