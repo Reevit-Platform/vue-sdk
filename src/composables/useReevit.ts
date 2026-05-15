@@ -226,7 +226,7 @@ export function useReevit(options: UseReevitOptions) {
     let intentKey: string | null = null;
 
     try {
-      const country = detectCountryFromCurrency(config.currency);
+      const country = detectCountryFromCurrency(config.currency || 'GHS');
       const defaultMethod =
         config.paymentMethods && config.paymentMethods.length === 1
           ? config.paymentMethods[0]
@@ -256,6 +256,24 @@ export function useReevit(options: UseReevitOptions) {
       }
 
       const requestIntent = async (): Promise<PaymentIntentResponse> => {
+        if (config.sessionSecret) {
+          const result = await apiClient.getCheckoutSession(config.sessionSecret);
+
+          if (result.error) {
+            throw result.error;
+          }
+
+          if (!result.data) {
+            throw {
+              code: 'INIT_FAILED',
+              message: 'No checkout session data received from API',
+              recoverable: true,
+            } as PaymentError;
+          }
+
+          return result.data.payment_intent;
+        }
+
         if (config.paymentLinkCode) {
           const response = await fetch(
             `${apiBaseUrl || DEFAULT_PUBLIC_API_BASE_URL}/v1/pay/${config.paymentLinkCode}/pay`,

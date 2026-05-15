@@ -264,9 +264,9 @@ const result = await initiateMPesaSTKPush(
 
 ## Release Notes
 
-### v0.7.0
+### v0.9.0
 
-- Updated `@reevit/core` dependency to v0.7.0
+- Updated `@reevit/core` dependency to v0.9.0
 - Version alignment across all Reevit SDKs
 
 ## License
