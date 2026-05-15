@@ -1,4 +1,4 @@
-import { ref as T, watch as $, computed as w, readonly as j, defineComponent as BA, createElementBlock as c, openBlock as E, normalizeClass as K, createCommentVNode as b, createElementVNode as r, normalizeStyle as U, Fragment as W, renderList as aA, toDisplayString as N, unref as oA, renderSlot as hA, createVNode as cA, withModifiers as DA, withDirectives as uA, vModelText as pA, createTextVNode as CA, onUnmounted as vA, createBlock as EA, Teleport as fA, withCtx as NA } from "vue";
+import { ref as T, watch as $, computed as w, readonly as j, defineComponent as BA, openBlock as E, createElementBlock as c, normalizeClass as K, createCommentVNode as b, createElementVNode as r, normalizeStyle as U, Fragment as W, renderList as aA, toDisplayString as N, unref as oA, createVNode as hA, renderSlot as cA, withModifiers as DA, withDirectives as uA, vModelText as pA, createTextVNode as CA, onUnmounted as vA, createBlock as EA, Teleport as fA, withCtx as NA } from "vue";
 import { createInitialState as yA, ReevitAPIClient as ZA, detectCountryFromCurrency as mA, resolveIntentIdentity as RA, cacheIntentPromise as kA, cacheIntentResponse as bA, clearIntentCacheEntry as FA, reevitReducer as SA, cn as MA, detectNetwork as zA, validatePhone as wA, createThemeVariables as TA, formatAmount as PA, createReevitClient as xA } from "@reevit/core";
 import { ReevitAPIClient as zo, cn as To, createReevitClient as Po, detectCountryFromCurrency as xo, detectNetwork as jo, formatAmount as Uo, formatPhone as Jo, validatePhone as Ho } from "@reevit/core";
 const jA = "https://api.reevit.io";
@@ -542,7 +542,7 @@ const XA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAMAAADDpiTIAA
             style: U(l.value)
           }, [
             r("div", ve, [
-              cA(YA, {
+              hA(YA, {
                 methods: s(h.provider, h.methods),
                 selected: o.selectedMethod || null,
                 provider: h.provider,
@@ -554,7 +554,7 @@ const XA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAMAAADDpiTIAA
                 onSelect: I[0] || (I[0] = (D) => n("methodSelect", D))
               }, null, 8, ["methods", "selected", "provider", "disabled", "country", "selected-theme"])
             ]),
-            hA(C.$slots, "method-content")
+            cA(C.$slots, "method-content")
           ], 4)) : b("", !0)
         ]))), 128))
       ])
@@ -1378,7 +1378,7 @@ const eo = ["disabled"], oo = {
       class: "reevit-sdk-container",
       style: U(F.value)
     }, [
-      hA(i.$slots, "default", {
+      cA(i.$slots, "default", {
         open: tA,
         isLoading: z.value
       }, () => [
@@ -1388,7 +1388,7 @@ const eo = ["disabled"], oo = {
           onClick: tA,
           disabled: z.value
         }, [
-          z.value ? (E(), c("span", oo)) : hA(i.$slots, "button-text", { key: 1 }, () => [
+          z.value ? (E(), c("span", oo)) : cA(i.$slots, "button-text", { key: 1 }, () => [
             t[5] || (t[5] = CA("Pay Now", -1))
           ])
         ], 8, eo)
@@ -1504,7 +1504,7 @@ const eo = ["disabled"], oo = {
                   ]),
                   _: 1
                 }, 8, ["providers", "selected-provider", "disabled", "theme", "selected-method", "country"])) : (E(), c(W, { key: 1 }, [
-                  cA(YA, {
+                  hA(YA, {
                     methods: nA.value,
                     selected: k.value,
                     provider: Z.value,
@@ -1517,7 +1517,7 @@ const eo = ["disabled"], oo = {
                   }, null, 8, ["methods", "selected", "provider", "disabled", "country", "selected-theme"]),
                   k.value ? (E(), c("div", Yo, [
                     k.value === "mobile_money" && Z.value.includes("mpesa") && !e.phone ? (E(), c("div", Go, [
-                      cA(IA, {
+                      hA(IA, {
                         "initial-phone": e.phone,
                         loading: R.value === "processing",
                         onSubmit: u,
