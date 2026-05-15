@@ -8,10 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "jsx": "preserve",
-    "types": ["vite/client"],
-    "paths": {
-      "@reevit/core": ["../core/src/index.ts"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["src/**/*", "src/**/*.vue", "src/shims-vue.d.ts"],
   "exclude": ["node_modules", "dist"]

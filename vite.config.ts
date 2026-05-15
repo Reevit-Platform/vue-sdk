@@ -8,6 +8,7 @@ export default defineConfig({
     vue(),
     dts({
       insertTypesEntry: true,
+      pathsToAliases: false,
       // rollupTypes: true, // Disabling because it causes "Unable to follow symbol" errors in CI
     }),
   ],
