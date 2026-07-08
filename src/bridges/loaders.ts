@@ -7,11 +7,7 @@ import CheckoutSdk from '@hubteljs/checkout';
 
 declare global {
   interface Window {
-    PaystackPop?: {
-      setup: (config: Record<string, unknown>) => {
-        openIframe: () => void;
-      };
-    };
+    PaystackPop?: PaystackPopConstructor;
     HubtelCheckout?: {
       initPay: (config: Record<string, unknown>) => void;
     };
@@ -21,6 +17,37 @@ declare global {
       initialize: (config: Record<string, unknown>) => void;
     };
   }
+}
+
+// Paystack Inline v2 (js.paystack.co/v2/inline.js). The v1-style
+// `PaystackPop.setup()` compat shim SILENTLY DROPS unknown keys — including
+// snake_case `access_code` (v2 only recognises camelCase `accessCode`) — so a
+// setup() call with an access code creates a brand-new transaction instead of
+// resuming the backend-initialized one. Always use the v2 instance API.
+interface PaystackPopConstructor {
+  new (): PaystackPopInstance;
+}
+
+interface PaystackPopInstance {
+  newTransaction: (config: PaystackTransactionConfig) => void;
+  resumeTransaction: (accessCode: string, callbacks?: PaystackPopupCallbacks) => void;
+}
+
+interface PaystackPopupCallbacks {
+  onSuccess?: (response: { reference: string; [key: string]: unknown }) => void;
+  onCancel?: () => void;
+  onError?: (error: { message?: string }) => void;
+}
+
+interface PaystackTransactionConfig extends PaystackPopupCallbacks {
+  key: string;
+  email: string;
+  phone?: string;
+  amount?: number;
+  currency?: string;
+  reference?: string;
+  metadata?: Record<string, unknown>;
+  channels?: string[];
 }
 
 interface StripeInstance {
@@ -82,7 +109,7 @@ function loadScript(url: string, id: string): Promise<void> {
  * Loads the Paystack inline script
  */
 export function loadPaystackScript(): Promise<void> {
-  return loadScript('https://js.paystack.co/v1/inline.js', 'paystack-script');
+  return loadScript('https://js.paystack.co/v2/inline.js', 'paystack-script');
 }
 
 /**
@@ -176,12 +203,16 @@ function normalizeHubtelSuccessPayload(input: unknown, fallbackReference: string
 export interface PaystackConfig {
   key: string;
   email: string;
+  phone?: string;
   amount: number;
   currency: string;
   ref: string;
+  accessCode?: string;
   metadata?: Record<string, unknown>;
+  channels?: string[];
   onSuccess: (response: { reference: string;[key: string]: unknown }) => void;
   onClose: () => void;
+  onError?: (error: { message?: string }) => void;
 }
 
 export interface HubtelConfig {
@@ -273,18 +304,38 @@ export async function openPaystackPopup(config: PaystackConfig): Promise<void> {
     throw new Error('Paystack script not loaded');
   }
 
-  const handler = window.PaystackPop.setup({
+  const callbacks: PaystackPopupCallbacks = {
+    onSuccess: config.onSuccess,
+    onCancel: config.onClose,
+    onError: (error) => {
+      if (config.onError) {
+        config.onError(error);
+      } else {
+        config.onClose();
+      }
+    },
+  };
+
+  const popup = new window.PaystackPop();
+
+  if (config.accessCode) {
+    // Resume the transaction the Reevit backend initialized — this is what
+    // ties the popup charge to the payment the backend polls/verifies.
+    popup.resumeTransaction(config.accessCode, callbacks);
+    return;
+  }
+
+  popup.newTransaction({
     key: config.key,
     email: config.email,
+    phone: config.phone,
     amount: config.amount,
     currency: config.currency,
-    ref: config.ref,
+    reference: config.ref,
     metadata: config.metadata,
-    callback: config.onSuccess,
-    onClose: config.onClose,
+    channels: config.channels,
+    ...callbacks,
   });
-
-  handler.openIframe();
 }
 
 /**
