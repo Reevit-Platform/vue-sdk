@@ -2,6 +2,24 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [0.10.1] - 2026-07-08
+
+### 🐛 Bug Fixes
+
+- **Paystack card/mobile-money payments never confirmed.** The Paystack popup
+  loaded Inline **v1** and called `PaystackPop.setup()` without the payment
+  intent's access code, so it created a **new, unrelated Paystack
+  transaction** instead of resuming the one the Reevit backend initialized.
+  The customer's charge succeeded at Paystack, but Reevit kept verifying its
+  own untouched reference — the payment stayed `pending` forever. The loader
+  now uses the Inline v2 instance API: `resumeTransaction(accessCode,
+  callbacks)` when the intent carries an access code (the normal Reevit
+  flow), and `newTransaction({...})` with camelCase keys otherwise.
+  `ReevitCheckout` passes the access code, customer phone, and a payment
+  channel hint through to the popup. Popup errors are now surfaced through a
+  new optional `onError` callback on `PaystackConfig` instead of being
+  ignored.
+
 ## [Unreleased] - 2026-02-04
 
 ### 🛠 Improvements
