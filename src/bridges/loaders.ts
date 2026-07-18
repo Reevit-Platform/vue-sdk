@@ -55,6 +55,15 @@ const scriptCache = new Map<string, Promise<void>>();
  * Loads an external script dynamically
  */
 function loadScript(url: string, id: string): Promise<void> {
+  // Guard against SSR (Nuxt/SSR rendering): there is no DOM on the server, so
+  // bail with a clear error instead of a cryptic `document is not defined`
+  // ReferenceError. Do this before the cache so the server never populates it.
+  if (typeof document === 'undefined') {
+    return Promise.reject(
+      new Error('Reevit: payment provider scripts can only be loaded in a browser environment'),
+    );
+  }
+
   const cached = scriptCache.get(id);
   if (cached) return cached;
 
