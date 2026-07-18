@@ -1,4 +1,4 @@
-import { ref as S, watch as V, computed as I, readonly as L, defineComponent as BA, createElementBlock as h, openBlock as E, withModifiers as YA, createElementVNode as n, createCommentVNode as T, normalizeClass as _, unref as aA, toDisplayString as u, Fragment as x, renderList as tA, onUnmounted as SA, normalizeStyle as q, renderSlot as dA, createBlock as EA, createTextVNode as hA, Teleport as TA, createVNode as zA } from "vue";
+import { ref as S, watch as V, computed as I, readonly as L, defineComponent as BA, openBlock as E, createElementBlock as h, withModifiers as YA, createElementVNode as n, normalizeClass as _, unref as aA, toDisplayString as u, createCommentVNode as T, Fragment as x, renderList as tA, onUnmounted as SA, normalizeStyle as q, renderSlot as dA, createTextVNode as EA, createBlock as hA, Teleport as TA, createVNode as zA } from "vue";
 import { createInitialState as PA, ReevitAPIClient as xA, detectCountryFromCurrency as jA, resolveIntentIdentity as UA, cacheIntentPromise as JA, cacheIntentResponse as HA, clearIntentCacheEntry as LA, reevitReducer as qA, detectNetwork as KA, validatePhone as cA, cn as DA, formatPhone as WA, createThemeVariables as XA, formatAmount as OA, createReevitClient as VA } from "@reevit/core";
 import { ReevitAPIClient as Lt, cn as qt, createReevitClient as Kt, detectCountryFromCurrency as Wt, detectNetwork as Xt, formatAmount as Ot, formatPhone as Vt, validatePhone as _t } from "@reevit/core";
 const _A = "https://api.reevit.io";
@@ -1167,12 +1167,12 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
           onClick: iA,
           disabled: H.value
         }, [
-          H.value ? (E(), h("span", ze)) : dA(Q.$slots, "button-text", { key: 1 }, () => [
-            s[2] || (s[2] = hA("Pay Now", -1))
-          ])
+          H.value ? (E(), h("span", ze)) : dA(Q.$slots, "button-text", {}, () => [
+            s[2] || (s[2] = EA("Pay Now", -1))
+          ], void 0, 1)
         ], 8, Te)
       ]),
-      (E(), EA(TA, { to: "body" }, [
+      (E(), hA(TA, { to: "body" }, [
         K.value ? (E(), h("div", {
           key: 0,
           class: "reevit-brut-overlay",
@@ -1209,18 +1209,18 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
               n("div", He, [
                 n("div", Le, [
                   s[4] || (s[4] = n("span", { class: "reevit-brut__amount-bracket" }, "[", -1)),
-                  hA(" " + u(k.value) + " ", 1),
+                  EA(" " + u(k.value) + " ", 1),
                   s[5] || (s[5] = n("span", { class: "reevit-brut__amount-bracket" }, "]", -1))
                 ]),
                 s[6] || (s[6] = n("span", { class: "reevit-brut__amount-tag" }, "DUE NOW", -1))
               ])
             ]),
-            J.value === "loading" ? (E(), EA(lA, {
+            J.value === "loading" ? (E(), hA(lA, {
               key: 0,
               marker: "PREPARING",
               title: "Setting up checkout",
               message: "This will only take a moment"
-            })) : J.value === "processing" ? (E(), EA(lA, {
+            })) : J.value === "processing" ? (E(), hA(lA, {
               key: 1,
               marker: "PROCESSING",
               title: "Confirming your payment"
@@ -1242,10 +1242,10 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
               ], -1)),
               s[10] || (s[10] = n("h3", { class: "reevit-brut__state-title" }, "PAYMENT CAPTURED", -1)),
               n("p", Ke, [
-                hA(u(k.value), 1),
+                EA(u(k.value), 1),
                 s[7] || (s[7] = n("br", null, null, -1)),
                 sA.value ? (E(), h(x, { key: 0 }, [
-                  hA("REF: " + u(sA.value), 1)
+                  EA("REF: " + u(sA.value), 1)
                 ], 64)) : T("", !0)
               ]),
               n("div", {
@@ -1319,7 +1319,7 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
                     ], 10, st))), 128))
                   ]))
                 ]),
-                b.value && RA.value ? (E(), EA(ce, {
+                b.value && RA.value ? (E(), hA(ce, {
                   key: 0,
                   "initial-phone": t.phone,
                   loading: H.value,

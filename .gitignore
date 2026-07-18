@@ -40,7 +40,6 @@ coverage/
 .tmp/
 .temp/
 
-# Package manager lock files (keep one based on your preference)
+# Package manager lock files
 # yarn.lock
 # pnpm-lock.yaml
-package-lock.json
