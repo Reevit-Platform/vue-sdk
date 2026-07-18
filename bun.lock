@@ -6,7 +6,7 @@
       "name": "@reevit/vue",
       "dependencies": {
         "@hubteljs/checkout": "^1.0.4",
-        "@reevit/core": "^0.4.7",
+        "@reevit/core": "^0.9.0",
       },
       "devDependencies": {
         "@types/node": "^20.0.0",
@@ -106,7 +106,7 @@
 
     "@microsoft/tsdoc-config": ["@microsoft/tsdoc-config@0.18.0", "", { "dependencies": { "@microsoft/tsdoc": "0.16.0", "ajv": "~8.12.0", "jju": "~1.4.0", "resolve": "~1.22.2" } }, "sha512-8N/vClYyfOH+l4fLkkr9+myAoR6M7akc8ntBJ4DJdWH2b09uVfr71+LTMpNyG19fNqWDg8KEDZhx5wxuqHyGjw=="],
 
-    "@reevit/core": ["@reevit/core@0.4.7", "", {}, "sha512-AmCQ1LQSpy3tSN2WDtgCgmKcnk3oxEl52RYbO/oydLLyMwn2aOvN1fP6KXDn3GMz6VyJy8x5LgTs7H0Eh2J86Q=="],
+    "@reevit/core": ["@reevit/core@0.9.0", "", {}, "sha512-aa0RrGdY+8VhZDbXNlgcz9/GWEp3Uwhpl2aGcgfv3OiM6oo12Swr+PZwJwDzizvg+WTkPOOPDxjiPcUSGA2c9g=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.53", "", {}, "sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ=="],
 

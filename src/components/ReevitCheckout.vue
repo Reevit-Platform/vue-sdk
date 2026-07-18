@@ -281,9 +281,12 @@ const handleProcessPayment = async (data: any) => {
       await openPaystackPopup({
         key: intent.pspPublicKey || props.publicKey || '',
         email: props.email || '',
+        phone: data?.phone || props.phone,
         amount: props.amount,
         currency: props.currency,
         ref: intent.id,
+        accessCode: intent.clientSecret,
+        channels: currentSelectedMethod.value === 'mobile_money' ? ['mobile_money'] : ['card'],
         metadata: {
           ...props.metadata,
           org_id: intent.orgId ?? (props.metadata?.org_id as string),
