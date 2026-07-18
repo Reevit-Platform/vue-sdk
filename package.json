@@ -33,13 +33,13 @@
   ],
   "author": "Reevit",
   "license": "MIT",
-  "homepage": "https://github.com/Reevit-Platform/vue#readme",
+  "homepage": "https://github.com/Reevit-Platform/vue-sdk#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Reevit-Platform/vue.git"
+    "url": "https://github.com/Reevit-Platform/vue-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/Reevit-Platform/vue/issues"
+    "url": "https://github.com/Reevit-Platform/vue-sdk/issues"
   },
   "peerDependencies": {
     "vue": "^3.3.0"
