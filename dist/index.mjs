@@ -612,6 +612,10 @@ class Me {
 }
 const mA = /* @__PURE__ */ new Map();
 function CA(e, A) {
+  if (typeof document > "u")
+    return Promise.reject(
+      new Error("Reevit: payment provider scripts can only be loaded in a browser environment")
+    );
   const o = mA.get(A);
   if (o) return o;
   const a = new Promise((r, t) => {
@@ -1163,9 +1167,9 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
           onClick: iA,
           disabled: H.value
         }, [
-          H.value ? (E(), h("span", ze)) : dA(Q.$slots, "button-text", { key: 1 }, () => [
+          H.value ? (E(), h("span", ze)) : dA(Q.$slots, "button-text", {}, () => [
             s[2] || (s[2] = EA("Pay Now", -1))
-          ])
+          ], void 0, 1)
         ], 8, Te)
       ]),
       (E(), hA(TA, { to: "body" }, [
