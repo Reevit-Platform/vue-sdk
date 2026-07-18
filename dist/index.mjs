@@ -629,7 +629,7 @@ function CA(e, A) {
   return mA.set(A, a), a;
 }
 function Ye() {
-  return CA("https://js.paystack.co/v1/inline.js", "paystack-script");
+  return CA("https://js.paystack.co/v2/inline.js", "paystack-script");
 }
 function Pt() {
   return Promise.resolve();
@@ -688,16 +688,28 @@ function be(e, A) {
 async function ye(e) {
   if (await Ye(), !window.PaystackPop)
     throw new Error("Paystack script not loaded");
-  window.PaystackPop.setup({
+  const A = {
+    onSuccess: e.onSuccess,
+    onCancel: e.onClose,
+    onError: (a) => {
+      e.onError ? e.onError(a) : e.onClose();
+    }
+  }, o = new window.PaystackPop();
+  if (e.accessCode) {
+    o.resumeTransaction(e.accessCode, A);
+    return;
+  }
+  o.newTransaction({
     key: e.key,
     email: e.email,
+    phone: e.phone,
     amount: e.amount,
     currency: e.currency,
-    ref: e.ref,
+    reference: e.ref,
     metadata: e.metadata,
-    callback: e.onSuccess,
-    onClose: e.onClose
-  }).openIframe();
+    channels: e.channels,
+    ...A
+  });
 }
 async function Re(e) {
   const A = new Me(), o = e.preferredMethod === "mobile_money" ? "momo" : e.preferredMethod === "card" ? "card" : void 0, a = {
@@ -999,9 +1011,12 @@ const GA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAKRCAMAAACbTz0+AA
           await ye({
             key: s.pspPublicKey || t.publicKey || "",
             email: t.email || "",
+            phone: Q?.phone || t.phone,
             amount: t.amount,
             currency: t.currency,
             ref: s.id,
+            accessCode: s.clientSecret,
+            channels: b.value === "mobile_money" ? ["mobile_money"] : ["card"],
             metadata: {
               ...t.metadata,
               org_id: s.orgId ?? t.metadata?.org_id,
