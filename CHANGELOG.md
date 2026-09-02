@@ -2,6 +2,35 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `sessionSecret` and `idempotencyKey` props on `ReevitCheckout`. A
+  server-created checkout session now drives the widget end to end, and
+  `amount`/`currency` are optional when one is supplied.
+- A vitest suite with a smoke test covering the server-session flow, wired
+  into CI.
+
+### Changed
+
+- Requires `@reevit/core` `^0.9.1`, which sends a per-attempt UUID as the
+  `Idempotency-Key` instead of a 32-bit hash and honours the currency
+  exponent when formatting amounts (a 5,000 XOF charge no longer renders as
+  `50.00`).
+- The displayed amount and the amount handed to each PSP bridge come from the
+  payment intent when there is one, falling back to the props.
+- **Release order:** `@reevit/core` 0.9.1 must be published to npm before
+  `@reevit/vue` can install via `npm ci`, build in CI, or be published.
+  `package-lock.json` still resolves core 0.9.0 and predates the new test
+  dependencies; regenerate it once 0.9.1 is on npm.
+
+### Fixed
+
+- A checkout configured with neither `sessionSecret`, `amount`+`currency`,
+  `paymentLinkCode` nor `initialPaymentIntent` now emits `error` immediately
+  instead of failing later inside the API client.
+
 ## [0.10.3] - 2026-07-18
 
 ### Changed

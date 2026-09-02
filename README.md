@@ -16,7 +16,7 @@ directly.
 
 | `@reevit/vue` | Requires `@reevit/core` |
 |---|---|
-| 0.10.x | `^0.9.0` (`>=0.9.0 <0.10.0`) |
+| 0.10.x | `^0.9.1` (`>=0.9.1 <0.10.0`) |
 | 0.9.x | `^0.9.0` (`>=0.9.0 <0.10.0`) |
 
 On a `0.x` package a caret range pins the **minor**, not the major:
@@ -64,6 +64,25 @@ const handleError = (error: any) => {
   </ReevitCheckout>
 </template>
 ```
+
+## Server-created Checkout Sessions
+
+For production checkouts, create the payment session on your backend with a
+server SDK, then pass the returned `session_secret` to Vue. The browser never
+creates the payment intent directly, so `amount` and `currency` are not needed —
+they come from the session.
+
+```vue
+<ReevitCheckout
+  :sessionSecret="checkoutSession.session_secret"
+  :paymentMethods="['card', 'mobile_money']"
+  @success="handleSuccess"
+  @error="handleError"
+/>
+```
+
+Keep the session secret in the browser, but never expose your private Reevit API
+key.
 
 ## Idempotency
 
@@ -160,9 +179,11 @@ const {
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `publicKey` | `string` | Your project's public key (required for API-created intents; optional when using `paymentLinkCode`) |
-| `amount` | `number` | **Required**. Amount in the smallest unit (e.g., 500 for 5.00) |
-| `currency` | `string` | **Required**. 3-letter ISO currency code (GHS, NGN, USD, etc.) |
+| `publicKey` | `string` | Your project's public key (required for API-created intents; optional when using `sessionSecret` or `paymentLinkCode`) |
+| `sessionSecret` | `string` | Secret of a server-created checkout session. Preferred for production; supplies the amount and currency |
+| `amount` | `number` | Amount in the smallest unit (e.g., 500 for 5.00). Required unless `sessionSecret`, `paymentLinkCode` or `initialPaymentIntent` is given |
+| `currency` | `string` | 3-letter ISO currency code (GHS, NGN, USD, etc.). Required unless `sessionSecret`, `paymentLinkCode` or `initialPaymentIntent` is given |
+| `idempotencyKey` | `string` | Order-scoped key that makes intent creation safe to retry |
 | `email` | `string` | Customer's email address |
 | `phone` | `string` | Customer's phone number (recommended for Mobile Money) |
 | `customerName` | `string` | Customer name (used in payment links and some PSPs) |
