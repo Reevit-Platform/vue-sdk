@@ -50,8 +50,14 @@ const METHOD_NAME: Record<string, string> = {
 
 const props = defineProps<{
   publicKey?: string;
-  amount: number;
-  currency: string;
+  /** Server-created checkout session secret. Prefer this over browser-created intents. */
+  sessionSecret?: string;
+  /** Amount in the smallest currency unit. Required unless `sessionSecret` or `initialPaymentIntent` is given. */
+  amount?: number;
+  /** Currency code. Required unless `sessionSecret` or `initialPaymentIntent` is given. */
+  currency?: string;
+  /** Order-scoped key that makes intent creation safe to retry. */
+  idempotencyKey?: string;
   email?: string;
   phone?: string;
   customerName?: string;
@@ -73,6 +79,25 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
+/**
+ * Mirrors the core client's guard, but locally so a misconfigured checkout reports
+ * itself before the shopper has clicked anything.
+ */
+const hasChargeableConfig = () =>
+  Boolean(props.sessionSecret) ||
+  Boolean(props.initialPaymentIntent) ||
+  Boolean(props.paymentLinkCode) ||
+  (typeof props.amount === 'number' && Boolean(props.currency));
+
+if (!hasChargeableConfig()) {
+  emit('error', {
+    code: 'invalid_checkout_config',
+    message:
+      'amount and currency are required when creating a payment intent in the browser.',
+    recoverable: false,
+  });
+}
+
 const {
   status,
   paymentIntent,
@@ -89,8 +114,10 @@ const {
 } = useReevit({
   config: {
     publicKey: props.publicKey,
+    sessionSecret: props.sessionSecret,
     amount: props.amount,
     currency: props.currency,
+    idempotencyKey: props.idempotencyKey,
     email: props.email,
     phone: props.phone,
     customerName: props.customerName,
@@ -125,6 +152,13 @@ const isModalVisible = ref(props.isOpen ?? false);
 const selectedProvider = ref<PSPType | null>(null);
 const successTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
 const successDelayMs = computed(() => props.successDelayMs ?? 5000);
+
+/**
+ * The amount actually charged. A server-created session carries its own amount, so the
+ * intent wins over the props whenever one exists.
+ */
+const displayAmount = computed(() => paymentIntent.value?.amount ?? props.amount ?? 0);
+const displayCurrency = computed(() => paymentIntent.value?.currency ?? props.currency ?? 'GHS');
 
 const clearSuccessTimeout = () => {
   if (successTimeout.value) {
@@ -282,8 +316,8 @@ const handleProcessPayment = async (data: any) => {
         key: intent.pspPublicKey || props.publicKey || '',
         email: props.email || '',
         phone: data?.phone || props.phone,
-        amount: props.amount,
-        currency: props.currency,
+        amount: displayAmount.value,
+        currency: displayCurrency.value,
         ref: intent.id,
         accessCode: intent.clientSecret,
         channels: currentSelectedMethod.value === 'mobile_money' ? ['mobile_money'] : ['card'],
@@ -318,8 +352,8 @@ const handleProcessPayment = async (data: any) => {
 
       await openHubtelPopup({
         clientId: (session.merchantAccount as string) || (intent.pspCredentials?.merchantAccount as string) || props.publicKey || '',
-        purchaseDescription: `Payment for ${props.amount} ${props.currency}`,
-        amount: props.amount,
+        purchaseDescription: `Payment for ${displayAmount.value} ${displayCurrency.value}`,
+        amount: displayAmount.value,
         apiBaseUrl: props.apiBaseUrl,
         callbackUrl: `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/webhooks/incoming/hubtel`,
         clientReference: intent.providerRefId || intent.reference || intent.id,
@@ -334,8 +368,8 @@ const handleProcessPayment = async (data: any) => {
       await openFlutterwaveModal({
         public_key: intent.pspPublicKey || props.publicKey || '',
         tx_ref: intent.id,
-        amount: props.amount,
-        currency: props.currency,
+        amount: displayAmount.value,
+        currency: displayCurrency.value,
         customer: {
           email: props.email || '',
           phone_number: data?.phone || props.phone,
@@ -365,8 +399,8 @@ const handleProcessPayment = async (data: any) => {
       await openMonnifyModal({
         apiKey,
         contractCode,
-        amount: props.amount,
-        currency: props.currency,
+        amount: displayAmount.value,
+        currency: displayCurrency.value,
         reference: intent.reference || intent.id,
         customerName: (props.metadata?.customer_name as string) || props.email || '',
         customerEmail: props.email || '',
@@ -379,7 +413,7 @@ const handleProcessPayment = async (data: any) => {
       const apiEndpoint = `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${intent.id}/mpesa`;
       await initiateMPesaSTKPush({
         phoneNumber: data?.phone || props.phone || '',
-        amount: props.amount,
+        amount: displayAmount.value,
         reference: intent.reference || intent.id,
         description: `Payment ${intent.reference || ''}`,
         onInitiated: () => {},
@@ -412,7 +446,7 @@ const resolvedTheme = computed(() => ({
 }));
 const themeVars = computed(() => createThemeVariables(resolvedTheme.value));
 const themeMode = computed(() => resolvedTheme.value?.darkMode);
-const formattedAmount = computed(() => formatAmount(props.amount, props.currency));
+const formattedAmount = computed(() => formatAmount(displayAmount.value, displayCurrency.value));
 const successReference = computed(() => result.value?.reference || paymentIntent.value?.reference || '');
 
 

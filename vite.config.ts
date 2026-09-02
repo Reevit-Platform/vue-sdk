@@ -9,6 +9,7 @@ export default defineConfig({
     dts({
       insertTypesEntry: true,
       pathsToAliases: false,
+      exclude: ['**/*.test.ts', 'vitest.config.ts'],
       // rollupTypes: true, // Disabling because it causes "Unable to follow symbol" errors in CI
     }),
   ],
