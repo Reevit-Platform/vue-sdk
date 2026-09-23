@@ -3,14 +3,18 @@
  * Dynamic script loading for PSP popups
  */
 
-import CheckoutSdk from '@hubteljs/checkout';
+import { createReevitClient } from '@reevit/core';
+import {
+  openHubtelCheckoutUrl,
+  startHubtelHostedCheckout,
+  warnHubtelBasicAuthIgnored,
+  type HubtelCheckoutError,
+  type HubtelCheckoutHandle,
+} from './hubtelHostedCheckout';
 
 declare global {
   interface Window {
     PaystackPop?: PaystackPopConstructor;
-    HubtelCheckout?: {
-      initPay: (config: Record<string, unknown>) => void;
-    };
     FlutterwaveCheckout?: (config: Record<string, unknown>) => void;
     Stripe?: (publishableKey: string) => StripeInstance;
     MonnifySDK?: {
@@ -122,8 +126,8 @@ export function loadPaystackScript(): Promise<void> {
 }
 
 /**
- * Hubtel now uses npm package @hubteljs/checkout
- * No script loading needed
+ * Hubtel opens its hosted checkout page, so there is no script to load.
+ * Kept so existing imports keep working.
  */
 export function loadHubtelScript(): Promise<void> {
   return Promise.resolve();
@@ -150,65 +154,6 @@ export function loadMonnifyScript(): Promise<void> {
   return loadScript('https://sdk.monnify.com/plugin/monnify.js', 'monnify-script');
 }
 
-const DEFAULT_REEVIT_API_BASE_URL = 'https://api.reevit.io';
-
-function getHubtelCallbackURL(apiBaseUrl?: string): string {
-  return `${apiBaseUrl || DEFAULT_REEVIT_API_BASE_URL}/v1/webhooks/incoming/hubtel`;
-}
-
-function parseHubtelCallbackPayload(input: unknown): Record<string, unknown> {
-  if (!input || typeof input !== 'object') {
-    return {};
-  }
-
-  const raw = input as Record<string, unknown>;
-  const nested = raw.data;
-  if (typeof nested === 'string') {
-    try {
-      const parsed = JSON.parse(nested) as unknown;
-      if (parsed && typeof parsed === 'object') {
-        return { ...raw, ...(parsed as Record<string, unknown>) };
-      }
-    } catch {
-      // Ignore parsing failures and return raw data.
-    }
-  } else if (nested && typeof nested === 'object') {
-    return { ...raw, ...(nested as Record<string, unknown>) };
-  }
-
-  return raw;
-}
-
-function readHubtelField(payload: Record<string, unknown>, keys: string[]): string {
-  for (const key of keys) {
-    const value = payload[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-
-  return '';
-}
-
-function normalizeHubtelSuccessPayload(input: unknown, fallbackReference: string): Record<string, unknown> {
-  const payload = parseHubtelCallbackPayload(input);
-  const transactionReference = readHubtelField(payload, [
-    'transactionId',
-    'transaction_id',
-    'transactionReference',
-    'paymentReference',
-    'checkoutId',
-  ]);
-  const clientReference = readHubtelField(payload, ['clientReference', 'client_reference']) || fallbackReference;
-
-  return {
-    ...payload,
-    reference: clientReference,
-    pspReference: transactionReference || clientReference,
-    hubtel_raw: input,
-  };
-}
-
 export interface PaystackConfig {
   key: string;
   email: string;
@@ -225,19 +170,40 @@ export interface PaystackConfig {
 }
 
 export interface HubtelConfig {
-  clientId: string;
-  purchaseDescription: string;
-  amount: number;
+  /** Reevit payment id. With `clientSecret`, the SDK fetches the checkout and tracks the outcome. */
+  paymentId?: string;
+  /** The payment's client secret. */
+  clientSecret?: string;
+  publicKey?: string;
   apiBaseUrl?: string;
-  callbackUrl?: string;
+  /** A Hubtel hosted checkout URL you already hold (display only without `paymentId`). */
+  checkoutUrl?: string;
+  /** Echoed back as `reference` on success. */
   clientReference?: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  hubtelSessionToken?: string;
-  basicAuth?: string;
-  preferredMethod?: 'card' | 'mobile_money';
   onSuccess: (response: Record<string, unknown>) => void;
   onClose: () => void;
+  onError?: (error: HubtelCheckoutError) => void;
+  /** @deprecated Ignored. Hubtel's hosted checkout already knows the merchant. */
+  clientId?: string;
+  /** @deprecated Ignored. Set when the payment is created. */
+  purchaseDescription?: string;
+  /** @deprecated Ignored. Set when the payment is created. */
+  amount?: number;
+  /** @deprecated Ignored. The Reevit API registers Hubtel's callback. */
+  callbackUrl?: string;
+  /** @deprecated Ignored. Collected on Hubtel's hosted checkout. */
+  customerPhone?: string;
+  /** @deprecated Ignored. Collected on Hubtel's hosted checkout. */
+  customerEmail?: string;
+  /** @deprecated Ignored. */
+  hubtelSessionToken?: string;
+  /**
+   * @deprecated Ignored, and never send it: it is the merchant's Hubtel API
+   * login (base64 client_id:client_secret). Hubtel checkout no longer needs it.
+   */
+  basicAuth?: string;
+  /** @deprecated Ignored. The shopper picks the method on Hubtel's checkout. */
+  preferredMethod?: 'card' | 'mobile_money';
 }
 
 export interface FlutterwaveConfig {
@@ -348,51 +314,64 @@ export async function openPaystackPopup(config: PaystackConfig): Promise<void> {
 }
 
 /**
- * Opens Hubtel popup using the @hubteljs/checkout npm package
+ * Opens Hubtel's hosted checkout.
+ *
+ * With `paymentId` (and `clientSecret`), fetches the checkout the Reevit API
+ * created and reports the outcome from Reevit's confirm endpoint. With only
+ * `checkoutUrl`, shows that page and calls `onClose` when it is dismissed.
+ * Hubtel credentials are never used in the browser.
  */
-export async function openHubtelPopup(config: HubtelConfig): Promise<void> {
-  const checkout = new CheckoutSdk();
+export async function openHubtelPopup(config: HubtelConfig): Promise<HubtelCheckoutHandle> {
+  if (config.basicAuth) {
+    warnHubtelBasicAuthIgnored();
+  }
 
-  const methodPreference =
-    config.preferredMethod === 'mobile_money' ? 'momo' : config.preferredMethod === 'card' ? 'card' : undefined;
+  if (config.paymentId) {
+    const paymentId = config.paymentId;
+    const client = createReevitClient({ publicKey: config.publicKey || '', baseUrl: config.apiBaseUrl });
 
-  const purchaseInfo = {
-    amount: config.amount,
-    purchaseDescription: config.purchaseDescription,
-    customerPhoneNumber: config.customerPhone || '',
-    clientReference: config.clientReference || `hubtel_${Date.now()}`,
-    ...(methodPreference ? { paymentMethod: methodPreference } : {}),
+    return startHubtelHostedCheckout({
+      clientSecret: config.clientSecret,
+      createSession: async () => {
+        if (config.checkoutUrl) {
+          return { data: { checkoutUrl: config.checkoutUrl } };
+        }
+        return client.createHubtelSession(paymentId, config.clientSecret);
+      },
+      checkStatus: async () => {
+        const { data, error } = config.clientSecret
+          ? await client.confirmPaymentIntent(paymentId, config.clientSecret)
+          : await client.confirmPayment(paymentId);
+        return { status: data?.status, error };
+      },
+      onSuccess: ({ status, checkoutId }) =>
+        config.onSuccess({
+          paymentId,
+          reference: config.clientReference || paymentId,
+          pspReference: checkoutId || paymentId,
+          status,
+          psp: 'hubtel',
+        }),
+      onError: (error) => (config.onError ? config.onError(error) : config.onClose()),
+      onClose: () => config.onClose(),
+    });
+  }
+
+  if (config.checkoutUrl) {
+    return openHubtelCheckoutUrl(config.checkoutUrl, config.onClose);
+  }
+
+  const error: HubtelCheckoutError = {
+    code: 'HUBTEL_CHECKOUT_URL_REQUIRED',
+    message: 'openHubtelPopup needs a paymentId (and clientSecret) or a Hubtel checkoutUrl.',
+    recoverable: false,
   };
-
-  // Use session token if provided, otherwise fall back to basicAuth
-  const authValue = config.hubtelSessionToken || config.basicAuth || '';
-
-  const checkoutConfig = {
-    branding: 'enabled' as const,
-    callbackUrl: config.callbackUrl || getHubtelCallbackURL(config.apiBaseUrl),
-    merchantAccount: typeof config.clientId === 'string'
-      ? parseInt(config.clientId, 10)
-      : config.clientId,
-    basicAuth: authValue,
-    ...(methodPreference ? { paymentMethod: methodPreference } : {}),
-  };
-
-  checkout.openModal({
-    purchaseInfo,
-    config: checkoutConfig,
-    callBacks: {
-      onPaymentSuccess: (data: any) => {
-        config.onSuccess(normalizeHubtelSuccessPayload(data, purchaseInfo.clientReference));
-        checkout.closePopUp();
-      },
-      onPaymentFailure: () => {
-        config.onClose();
-      },
-      onClose: () => {
-        config.onClose();
-      },
-    },
-  });
+  if (config.onError) {
+    config.onError(error);
+  } else {
+    config.onClose();
+  }
+  return { cancel: () => {} };
 }
 
 /**

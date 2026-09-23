@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
-import { createThemeVariables, createReevitClient, formatAmount, cn } from '@reevit/core';
+import { createThemeVariables, formatAmount, cn } from '@reevit/core';
 import type { ReevitTheme, PaymentIntent, PaymentMethod, PSPType } from '@reevit/core';
 
 import MobileMoneyForm from './MobileMoneyForm.vue';
@@ -191,7 +191,11 @@ const handleOpen = () => {
 // NOTE: Auto-advance logic removed to allow users to see and select payment methods
 // Users must explicitly click a "Pay" button to proceed to the PSP bridge
 
+let hubtelCheckout: { cancel: () => void } | null = null;
+
 const handleClose = () => {
+  hubtelCheckout?.cancel();
+  hubtelCheckout = null;
   clearSuccessTimeout();
   isModalVisible.value = false;
   closeSdk();
@@ -332,36 +336,17 @@ const handleProcessPayment = async (data: any) => {
         onClose: () => {},
       });
     } else if (psp === 'hubtel') {
-      const client = createReevitClient({ publicKey: props.publicKey, baseUrl: props.apiBaseUrl });
-      const { data: session, error: sessionError } = await client.createHubtelSession(
-        intent.id,
-        intent.clientSecret
-      );
-      if (sessionError || !session?.basicAuth) {
-        handlePspError({
-          code: sessionError?.code || 'hubtel_session_error',
-          message: sessionError?.message || 'Failed to create Hubtel session',
-        });
-        return;
-      }
-
-      const hubtelPreferredMethod =
-        currentSelectedMethod.value === 'card' || currentSelectedMethod.value === 'mobile_money'
-          ? currentSelectedMethod.value
-          : undefined;
-
-      await openHubtelPopup({
-        clientId: (session.merchantAccount as string) || (intent.pspCredentials?.merchantAccount as string) || props.publicKey || '',
-        purchaseDescription: `Payment for ${displayAmount.value} ${displayCurrency.value}`,
-        amount: displayAmount.value,
+      // Opens the hosted checkout the Reevit API created; no Hubtel credentials
+      // are used in the browser.
+      hubtelCheckout?.cancel();
+      hubtelCheckout = await openHubtelPopup({
+        paymentId: intent.id,
+        clientSecret: intent.clientSecret,
+        publicKey: props.publicKey,
         apiBaseUrl: props.apiBaseUrl,
-        callbackUrl: `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/webhooks/incoming/hubtel`,
         clientReference: intent.providerRefId || intent.reference || intent.id,
-        customerPhone: data?.phone || props.phone,
-        customerEmail: props.email,
-        basicAuth: session.basicAuth,
-        preferredMethod: hubtelPreferredMethod,
         onSuccess: (res) => handlePspSuccess(res),
+        onError: (err) => handlePspError(err),
         onClose: () => {},
       });
     } else if (psp === 'flutterwave') {
@@ -460,6 +445,8 @@ watch(isModalVisible, (val: any) => {
 });
 
 onUnmounted(() => {
+  hubtelCheckout?.cancel();
+  hubtelCheckout = null;
   document.body.style.overflow = '';
   clearSuccessTimeout();
 });
