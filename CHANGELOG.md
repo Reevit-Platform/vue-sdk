@@ -2,7 +2,7 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
-## [Unreleased]
+## [0.11.0] - 2026-09-24
 
 ### Security
 
