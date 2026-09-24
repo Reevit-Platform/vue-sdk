@@ -2,7 +2,46 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
-## [Unreleased]
+## [0.11.0] - 2026-09-24
+
+### Security
+
+- **Hubtel checkout no longer uses the merchant's Hubtel credentials.**
+  `ReevitCheckout` used to fetch `basicAuth` (base64 `client_id:client_secret`)
+  from `POST /v1/payments/hubtel/sessions/{id}` and pass it to
+  `@hubteljs/checkout` in the browser, which put the merchant's Hubtel API login
+  in the shopper's browser. It now opens the hosted checkout the Reevit API
+  already created (`checkoutDirectUrl` embedded in a plain overlay, or
+  `checkoutUrl`) and learns the result by polling
+  `POST /v1/payments/{id}/confirm-intent`. It never reads a result from the
+  Hubtel page. A message from a `*.hubtel.com` page only triggers an immediate
+  status check. The checkout closes it when the widget closes or unmounts.
+- The `@hubteljs/checkout` dependency is removed, along with the bundled copy
+  of it in `dist/`.
+
+### Deprecated
+
+- `HubtelConfig.basicAuth` is ignored. It stays in the type so existing code
+  still compiles, and outside production builds the SDK logs a single console
+  warning when it is passed. If you ever passed `basicAuth` yourself, rotate
+  those Hubtel API keys.
+- `openHubtelPopup` now takes `paymentId` + `clientSecret` (full outcome
+  tracking) or a `checkoutUrl` (display only), plus an optional `onError`. It
+  returns a handle with `cancel()`. The old purchase fields (`clientId`,
+  `purchaseDescription`, `amount`, `callbackUrl`, `customerPhone`,
+  `customerEmail`, `hubtelSessionToken`, `preferredMethod`) are optional and
+  ignored. `loadHubtelScript` remains a no-op.
+
+### Compatibility
+
+- Works with backends before and after the server change: an older backend
+  still returns `basicAuth` and no checkout URL. The SDK ignores `basicAuth` and
+  opens the payment's client secret instead, which on Hubtel payments is the
+  hosted checkout URL.
+- **Breaking for published versions up to 0.10.3 once the backend change
+  deploys.** The session endpoint stops returning `basicAuth`, so those versions
+  fail with "Failed to create Hubtel session" and cannot take Hubtel payments.
+  Other providers are unaffected. Merchants using Hubtel must upgrade.
 
 ### Added
 

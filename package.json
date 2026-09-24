@@ -1,6 +1,6 @@
 {
   "name": "@reevit/vue",
-  "version": "0.10.3",
+  "version": "0.11.0",
   "description": "Unified Payment Widget for Vue 3 Applications",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -46,7 +46,6 @@
     "vue": "^3.3.0"
   },
   "dependencies": {
-    "@hubteljs/checkout": "^1.0.4",
     "@reevit/core": "^0.9.1"
   },
   "devDependencies": {

@@ -6,10 +6,5 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     restoreMocks: true,
-    server: {
-      // @hubteljs/checkout ships extensionless ESM imports that Node cannot resolve;
-      // inlining routes it through Vite's resolver instead.
-      deps: { inline: ['@hubteljs/checkout'] },
-    },
   },
 });
