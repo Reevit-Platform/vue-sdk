@@ -2,6 +2,13 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [0.11.1] - Unreleased
+
+### Fixed
+
+- Flutterwave checkout converts Reevit minor units using the currency exponent. A 5,012 GHS intent requests 50.12 GHS; a 5,000 XOF intent requests 5,000 XOF.
+- The exported `openFlutterwaveModal` helper retains Flutterwave's major-unit config contract; the widget performs conversion before calling it.
+
 ## [0.11.0] - 2026-09-24
 
 ### Security

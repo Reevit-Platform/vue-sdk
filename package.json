@@ -1,6 +1,6 @@
 {
   "name": "@reevit/vue",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Unified Payment Widget for Vue 3 Applications",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -22,7 +22,8 @@
     "dev": "vite build --watch",
     "typecheck": "vue-tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:package": "npm run build && node scripts/check-packed-package.mjs"
   },
   "keywords": [
     "reevit",
