@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
+import { toFlutterwaveAmount } from '../bridges/flutterwaveAmount';
 import { createThemeVariables, formatAmount, cn } from '@reevit/core';
 import type { ReevitTheme, PaymentIntent, PaymentMethod, PSPType } from '@reevit/core';
 
@@ -353,7 +354,7 @@ const handleProcessPayment = async (data: any) => {
       await openFlutterwaveModal({
         public_key: intent.pspPublicKey || props.publicKey || '',
         tx_ref: intent.id,
-        amount: displayAmount.value,
+        amount: toFlutterwaveAmount(displayAmount.value, displayCurrency.value),
         currency: displayCurrency.value,
         customer: {
           email: props.email || '',

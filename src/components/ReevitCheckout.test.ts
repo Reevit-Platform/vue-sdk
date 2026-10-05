@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import ReevitCheckout from './ReevitCheckout.vue';
+const ReevitCheckout = import.meta.env.VITE_REEVIT_PACKED_ENTRY
+  ? (await import(/* @vite-ignore */ import.meta.env.VITE_REEVIT_PACKED_ENTRY)).ReevitCheckout
+  : (await import('./ReevitCheckout.vue')).default;
 
 const SESSION_SECRET = 'cs_checkout_session_secret';
 
@@ -136,5 +138,43 @@ describe('ReevitCheckout with Hubtel', () => {
     expect(urls.some((url) => url.includes('/v1/payments/hubtel/sessions/pay_selected_mobile_money'))).toBe(true);
     expect(urls.some((url) => url.includes('/confirm-intent'))).toBe(true);
     expect(document.body.innerHTML).not.toContain('basicAuth');
+  });
+});
+
+describe('ReevitCheckout with Flutterwave', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete window.FlutterwaveCheckout;
+  });
+
+  it.each([
+    ['GHS', 5012, 50.12],
+    ['NGN', 5012, 50.12],
+    ['XOF', 5000, 5000],
+    ['XAF', 5000, 5000],
+  ])('converts the %s intent amount only at the gateway boundary', async (currency, minor, major) => {
+    const checkout = vi.fn();
+    window.FlutterwaveCheckout = checkout;
+    if (!document.getElementById('flutterwave-script')) {
+      const script = document.createElement('script');
+      script.id = 'flutterwave-script';
+      document.head.appendChild(script);
+    }
+    const session = sessionResponse('flutterwave-secret');
+    session.payment_intent.amount = minor;
+    session.payment_intent.currency = currency;
+    session.payment_intent.provider = 'flutterwave';
+    session.payment_intent.available_psps = [{ provider: 'flutterwave', name: 'Flutterwave', methods: ['card'] }];
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(session), { status: 200 })));
+
+    render(ReevitCheckout, { props: {
+      sessionSecret: `cs_flutterwave_${currency}`, paymentMethods: ['card'], email: 'shopper@example.com',
+    } });
+    await fireEvent.click(screen.getByRole('button', { name: /pay now/i }));
+    await fireEvent.click(await screen.findByRole('button', { name: /CARD/ }));
+    await fireEvent.click(screen.getByRole('button', { name: /MAKE PAYMENT/ }));
+
+    await waitFor(() => expect(checkout).toHaveBeenCalledTimes(1));
+    expect(checkout.mock.calls[0][0]).toMatchObject({ amount: major, currency });
   });
 });

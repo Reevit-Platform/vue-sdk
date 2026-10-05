@@ -209,6 +209,7 @@ export interface HubtelConfig {
 export interface FlutterwaveConfig {
   public_key: string;
   tx_ref: string;
+  /** Amount in major currency units, matching Flutterwave's own config. */
   amount: number;
   currency: string;
   customer: {
