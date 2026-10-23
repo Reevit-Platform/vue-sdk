@@ -12,8 +12,8 @@ export { default as PaymentMethodSelector } from './components/PaymentMethodSele
 export { default as MobileMoneyForm } from './components/MobileMoneyForm.vue';
 
 // Composables
-export { useReevit, useDirectCharge } from './composables';
-export type { DirectCharge, DirectChargeState, DirectFailure, DirectPhase } from './composables';
+export { useReevit, useDirectCharge, useDirectBank } from './composables';
+export type { DirectCharge, DirectChargeState, DirectFailure, DirectPhase, DirectBank, DirectBankState, BankPhase } from './composables';
 
 // Re-export core types and utilities
 export type {
@@ -49,6 +49,7 @@ export {
   type DirectChargeApi,
   type DirectApiError,
   type PublicAttempt,
+  type BankDetails,
 } from './api';
 export type { MethodOption, CheckoutProvider } from './types';
 
