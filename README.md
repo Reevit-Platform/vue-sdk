@@ -289,6 +289,10 @@ If you build your own screen, render `MPesaBridge` for a payment that already ex
 />
 ```
 
+### Provider says paid, backend still pending
+
+Popup providers can report success before Reevit's own confirmation lands. The checkout then shows "Confirming your payment" (no Try again, closing is allowed and does not cancel the payment) and keeps checking for up to 2 minutes. `success` is emitted only on `succeeded`. If it is still pending after 2 minutes the checkout shows "We're still confirming this payment" with Done, emits neither `success` nor `error`, and `stateChange` reports `confirming` then `pending`.
+
 ## Supported PSPs
 
 | Provider | Countries | Payment Methods |

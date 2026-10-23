@@ -24,6 +24,7 @@ import type {
 
 import CheckoutShell from './CheckoutShell.vue';
 import FailurePanel from './FailurePanel.vue';
+import UnconfirmedPanel from './UnconfirmedPanel.vue';
 import LoadingState from './LoadingState.vue';
 import MethodList from './MethodList.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
@@ -63,7 +64,7 @@ const PROVIDER_FOOTER: Record<string, { src: string; kind: 'icon' | 'word' }> = 
 };
 
 type Stage = 'list' | 'phone' | 'preparing' | 'bridge';
-type ViewId = 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'receipt' | 'failure';
+type ViewId = 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'confirming' | 'unconfirmed' | 'receipt' | 'failure';
 
 const titleCase = (value: string) => value.replace(/^\w/, (c) => c.toUpperCase());
 
@@ -96,6 +97,8 @@ const emit = defineEmits<{
   (e: 'success', result: any): void;
   (e: 'error', error: any): void;
   (e: 'close'): void;
+  /** Checkout state changes, including `confirming` and `pending` while a paid provider payment is unconfirmed. */
+  (e: 'stateChange', state: string): void;
 }>();
 
 /**
@@ -124,6 +127,7 @@ const {
   selectedMethod,
   result,
   error,
+  confirmation,
   initialize,
   selectMethod,
   processPayment,
@@ -165,6 +169,7 @@ const {
   },
   onError: (err) => emit('error', err),
   onClose: () => emit('close'),
+  onStateChange: (state) => emit('stateChange', state),
 });
 
 const isModalVisible = ref(props.isOpen ?? false);
@@ -612,6 +617,8 @@ const showFailure = computed(() => (status.value === 'failed' && !!error.value) 
 const view = computed<ViewId>(() => {
   if (status.value === 'success' && result.value) return 'receipt';
   if (showFailure.value) return 'failure';
+  if (confirmation.value === 'unconfirmed') return 'unconfirmed';
+  if (confirmation.value === 'confirming') return 'confirming';
   if (status.value === 'processing') return 'processing';
   if (!paymentIntent.value) return 'loading';
   if (activeStage.value === 'preparing') return 'preparing';
@@ -686,6 +693,8 @@ const announce = computed(
       preparing: `Opening ${pspName.value}`,
       bridge: `Opening ${pspName.value}`,
       processing: 'Processing payment',
+      confirming: 'Confirming your payment',
+      unconfirmed: 'Still confirming this payment',
       receipt: 'Payment received',
       failure: 'Payment failed',
     })[view.value]
@@ -773,6 +782,14 @@ onUnmounted(() => {
             title="Processing payment"
             message="Please don’t close this window."
           />
+
+          <LoadingState
+            v-else-if="view === 'confirming'"
+            title="Confirming your payment"
+            message="This can take a minute. You don’t need to pay again."
+          />
+
+          <UnconfirmedPanel v-else-if="view === 'unconfirmed'" @done="handleClose" />
 
           <ReceiptPanel
             v-else-if="view === 'receipt' && result"
