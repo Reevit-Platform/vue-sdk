@@ -265,6 +265,10 @@ export interface MonnifyConfig {
 export interface MPesaConfig {
   phoneNumber: string;
   amount: number;
+  /** Currency of `amount` (KES or TZS). Sent with the request when given. */
+  currency?: string;
+  /** Extra request headers, e.g. `x-reevit-public-key`. */
+  headers?: Record<string, string>;
   reference: string;
   description?: string;
   onInitiated: () => void;
@@ -502,10 +506,11 @@ export async function initiateMPesaSTKPush(
   try {
     const response = await fetch(apiEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...config.headers },
       body: JSON.stringify({
         phone_number: config.phoneNumber,
         amount: config.amount,
+        ...(config.currency ? { currency: config.currency } : {}),
         reference: config.reference,
         description: config.description,
       }),

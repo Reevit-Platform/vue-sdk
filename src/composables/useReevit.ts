@@ -50,6 +50,91 @@ interface UseReevitOptions {
   apiBaseUrl?: string;
 }
 
+interface CheckoutSessionSelectionResponse {
+  payment_intent: PaymentIntentResponse;
+}
+
+async function selectCheckoutSession(
+  sessionSecret: string,
+  method: PaymentMethod,
+  provider: string,
+  idempotencyKey: string,
+  apiBaseUrl?: string,
+): Promise<{ data?: CheckoutSessionSelectionResponse; error?: PaymentError }> {
+  const response = await fetch(
+    `${apiBaseUrl || DEFAULT_PUBLIC_API_BASE_URL}/v1/checkout/sessions/${encodeURIComponent(sessionSecret)}/select`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
+        'X-Reevit-Client': '@reevit/vue',
+        'X-Reevit-Client-Version': '0.12.0',
+      },
+      body: JSON.stringify({ method, provider }),
+    },
+  );
+  const responseData = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return {
+      error: {
+        code: responseData?.code || 'checkout_session_selection_error',
+        message: responseData?.message || 'Checkout session selection failed',
+        recoverable: response.status >= 500,
+        details: {
+          httpStatus: response.status,
+          ...(responseData?.details || {}),
+        },
+      },
+    };
+  }
+
+  return { data: responseData as CheckoutSessionSelectionResponse };
+}
+
+// FNV-1a, 128-bit parameters (RFC draft-eastlake-fnv): offset basis and prime.
+const FNV_1A_128_OFFSET_BASIS = 0x6c62272e07bb014262b821756295c58dn;
+const FNV_1A_128_PRIME = 0x0000000001000000000000000000013bn;
+const FNV_1A_128_MASK = (1n << 128n) - 1n;
+
+/**
+ * 128-bit digest of a UTF-8 string, as 32 lowercase hex characters.
+ *
+ * Deliberately synchronous: `checkoutSelectionIdentity` is read on the
+ * synchronous path of `initialize()`, before the in-flight intent promise is
+ * registered, so two Continue clicks in the same tick both reach the cache.
+ * Awaiting `crypto.subtle.digest` here would let both clicks slip past that
+ * cache and send two selection requests.
+ *
+ * FNV-1a is not a cryptographic hash and is not used as one: the input already
+ * travels to the same endpoint in the request URL, so the key reveals nothing
+ * new. What matters is the output space — 2^128 instead of djb2's 2^32, which
+ * collided at ~50% odds around 77k distinct selections inside the backend's
+ * 24h idempotency window.
+ */
+function digest128Hex(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let hash = FNV_1A_128_OFFSET_BASIS;
+
+  for (let i = 0; i < bytes.length; i++) {
+    hash ^= BigInt(bytes[i]);
+    hash = (hash * FNV_1A_128_PRIME) & FNV_1A_128_MASK;
+  }
+
+  return hash.toString(16).padStart(32, '0');
+}
+
+/**
+ * Stable identity for one (session, method, provider) selection.
+ *
+ * Determinism is intentional — re-selecting the same method on the same session
+ * must replay the first selection rather than create a second one — so this must
+ * never become a random UUID.
+ */
+export function checkoutSelectionIdentity(sessionSecret: string, method: PaymentMethod, provider: string): string {
+  return `reevit_checkout_selection_${digest128Hex(`${sessionSecret}:${method}:${provider}`)}`;
+}
+
 /**
  * Maps PSP provider names from backend to PSP type
  */
@@ -233,8 +318,27 @@ export function useReevit(options: UseReevitOptions) {
           : undefined;
       const paymentMethod = method ?? defaultMethod;
 
+      // A session selection gets its own identity so re-selecting the same method replays the first selection.
+      const selectionScope = [
+        paymentMethod,
+        options?.preferredProvider,
+        ...(options?.allowedProviders ? [...options.allowedProviders].sort() : []),
+      ].filter(Boolean).join(':');
+      const selectionProvider = options?.preferredProvider || options?.allowedProviders?.[0];
+      const selectionIdempotencyKey = config.sessionSecret && paymentMethod && selectionProvider
+        ? checkoutSelectionIdentity(config.sessionSecret, paymentMethod, selectionProvider)
+        : undefined;
+      const identityConfig = selectionScope
+        ? {
+            ...config,
+            idempotencyKey: config.idempotencyKey
+              ? `${config.idempotencyKey}:${selectionScope}`
+              : selectionIdempotencyKey,
+          }
+        : config;
+
       const identity = resolveIntentIdentity({
-        config,
+        config: identityConfig,
         method: paymentMethod,
         preferredProvider: options?.preferredProvider,
         allowedProviders: options?.allowedProviders,
@@ -257,7 +361,15 @@ export function useReevit(options: UseReevitOptions) {
 
       const requestIntent = async (): Promise<PaymentIntentResponse> => {
         if (config.sessionSecret) {
-          const result = await apiClient.getCheckoutSession(config.sessionSecret);
+          const result = paymentMethod && selectionProvider
+            ? await selectCheckoutSession(
+                config.sessionSecret,
+                paymentMethod,
+                selectionProvider,
+                idempotencyKey,
+                apiBaseUrl,
+              )
+            : await apiClient.getCheckoutSession(config.sessionSecret);
 
           if (result.error) {
             throw result.error;
@@ -304,7 +416,7 @@ export function useReevit(options: UseReevitOptions) {
         }
 
         const result = await apiClient.createPaymentIntent(
-          { ...config, reference, idempotencyKey },
+          { ...identityConfig, reference, idempotencyKey },
           paymentMethod,
           country,
           {

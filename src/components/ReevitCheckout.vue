@@ -795,6 +795,8 @@ onUnmounted(() => {
               :api-endpoint="mpesaEndpoint"
               :phone-number="momoData?.phone || props.phone || ''"
               :amount="displayAmount"
+              :currency="displayCurrency"
+              :headers="{ 'x-reevit-public-key': props.publicKey || '' }"
               :reference="mpesaReference"
               :description="`Payment ${paymentIntent?.reference || props.reference || ''}`"
               auto-start

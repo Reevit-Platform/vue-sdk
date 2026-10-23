@@ -17,7 +17,10 @@ const props = withDefaults(
     /** Customer phone number in format 254XXXXXXXXX. */
     phoneNumber: string;
     amount: number;
+    currency?: string;
     reference: string;
+    /** Custom headers for the request (e.g. the public key). */
+    headers?: Record<string, string>;
     description?: string;
     /** Send the STK Push on mount instead of waiting for the "Send payment request" button. */
     autoStart?: boolean;
@@ -58,6 +61,8 @@ const initiateSTKPush = async () => {
     {
       phoneNumber: props.phoneNumber,
       amount: props.amount,
+      currency: props.currency,
+      headers: props.headers,
       reference: props.reference,
       description: props.description || `Payment ${props.reference}`,
       onInitiated: () => {},

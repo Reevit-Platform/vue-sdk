@@ -66,6 +66,8 @@ All notable changes to `@reevit/vue` will be documented in this file.
 
 ### Fixed
 
+- With a `sessionSecret`, picking a method now asks the session for a method-specific intent (`POST /v1/checkout/sessions/{secret}/select`) instead of reusing the initial one, so Paystack opens Mobile Money for a Mobile money pick rather than card only. Repeat taps replay the same selection.
+- The M-Pesa STK push request now includes `currency` and the `x-reevit-public-key` header. `MPesaConfig` accepts optional `currency` and `headers`.
 - Flutterwave checkout converts Reevit minor units using the currency exponent. A 5,012 GHS intent requests 50.12 GHS; a 5,000 XOF intent requests 5,000 XOF.
 - The exported `openFlutterwaveModal` helper retains Flutterwave's major-unit config contract; the widget performs conversion before calling it.
 - The header and Stripe pay button format amounts with the currency's real exponent instead of dividing by 100.
