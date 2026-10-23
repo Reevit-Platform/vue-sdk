@@ -12,7 +12,8 @@ export { default as PaymentMethodSelector } from './components/PaymentMethodSele
 export { default as MobileMoneyForm } from './components/MobileMoneyForm.vue';
 
 // Composables
-export { useReevit } from './composables';
+export { useReevit, useDirectCharge } from './composables';
+export type { DirectCharge, DirectChargeState, DirectFailure, DirectPhase } from './composables';
 
 // Re-export core types and utilities
 export type {
@@ -40,6 +41,16 @@ export {
   ReevitAPIClient,
   createReevitClient,
 } from '@reevit/core';
+
+// Reevit's own mobile money screens: the API client behind them
+export {
+  createDirectChargeClient,
+  CLIENT_SECRET_HEADER,
+  type DirectChargeApi,
+  type DirectApiError,
+  type PublicAttempt,
+} from './api';
+export type { MethodOption, CheckoutProvider } from './types';
 
 // PSP Script loaders for bridges
 export {

@@ -22,6 +22,10 @@ const props = withDefaults(
     mode?: 'network' | 'mpesa';
     /** Primary button label, e.g. "Pay GHS 755.00". */
     submitLabel?: string;
+    /** Networks the provider accepts. Omit to offer all three. */
+    networks?: string[];
+    /** A polite line above the button (an earlier prompt still active, no connection). */
+    notice?: string | null;
   }>(),
   { initialPhone: '', mode: 'network', submitLabel: 'Continue' }
 );
@@ -118,6 +122,9 @@ const handleSubmit = () => {
   emit('submit', { phone: raw, network: network.value as MobileMoneyNetwork });
 };
 
+const choices = computed(() =>
+  props.networks?.length ? NETWORKS.filter((n) => props.networks!.includes(n.id)) : NETWORKS
+);
 const logos = computed(() => (mpesa.value ? [] : getMethodMarks('GH', 'mobile_money')));
 const suffix = computed(() => (mpesa.value ? getMethodMarks('KE', 'mobile_money')[0] : undefined));
 </script>
@@ -154,7 +161,7 @@ const suffix = computed(() => (mpesa.value ? getMethodMarks('KE', 'mobile_money'
         <legend>Network</legend>
         <div class="reevit-networks">
           <button
-            v-for="n in NETWORKS"
+            v-for="n in choices"
             :key="n.id"
             type="button"
             class="reevit-network"
@@ -172,6 +179,8 @@ const suffix = computed(() => (mpesa.value ? getMethodMarks('KE', 'mobile_money'
         </div>
         <p v-if="networkError" :id="networkErrorId" class="reevit-error" role="alert">{{ networkError }}</p>
       </fieldset>
+
+      <p v-if="notice" class="reevit-status" data-reevit="status" role="status" aria-live="polite">{{ notice }}</p>
 
       <button type="submit" class="reevit-cta" data-reevit="cta" :disabled="loading">
         {{ loading ? 'Please wait' : submitLabel }}

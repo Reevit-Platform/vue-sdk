@@ -9,10 +9,13 @@
  */
 import { ref, watch, onUnmounted, computed } from 'vue';
 import { useReevit } from '../composables/useReevit';
+import { useDirectCharge, FAILOVER_DONE, type DirectInput } from '../composables/useDirectCharge';
+import { createDirectChargeClient, type DirectChargeApi, type PublicAttempt } from '../api/direct';
+import type { CheckoutProvider, MethodOption } from '../types';
+import { NETWORK_LABEL, formatPayerPhone } from '../utils/momo';
 import { toFlutterwaveAmount } from '../bridges/flutterwaveAmount';
 import { createThemeVariables, formatAmount } from '@reevit/core';
 import type {
-  CheckoutProviderOption,
   MobileMoneyFormData,
   PaymentError,
   PaymentIntent,
@@ -28,6 +31,9 @@ import UnconfirmedPanel from './UnconfirmedPanel.vue';
 import LoadingState from './LoadingState.vue';
 import MethodList from './MethodList.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
+import MomoCodePanel from './MomoCodePanel.vue';
+import MomoFailurePanel from './MomoFailurePanel.vue';
+import MomoWaitPanel from './MomoWaitPanel.vue';
 import MPesaBridge from './MPesaBridge.vue';
 import PanelHead from './PanelHead.vue';
 import ReceiptPanel from './ReceiptPanel.vue';
@@ -63,8 +69,16 @@ const PROVIDER_FOOTER: Record<string, { src: string; kind: 'icon' | 'word' }> = 
   stripe: { src: stripeLogo, kind: 'word' },
 };
 
-type Stage = 'list' | 'phone' | 'preparing' | 'bridge';
-type ViewId = 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'confirming' | 'unconfirmed' | 'receipt' | 'failure';
+type Stage = 'list' | 'phone' | 'direct' | 'preparing' | 'bridge';
+type ViewId =
+  | 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'confirming' | 'unconfirmed' | 'receipt' | 'failure'
+  | 'momo' | 'momo-wait' | 'momo-code' | 'momo-fail';
+
+/** A provider that takes a method in Reevit's own screens, with its capabilities. */
+interface DirectSelection {
+  provider: CheckoutProvider;
+  option: MethodOption;
+}
 
 const titleCase = (value: string) => value.replace(/^\w/, (c) => c.toUpperCase());
 
@@ -131,6 +145,7 @@ const {
   initialize,
   selectMethod,
   processPayment,
+  completePayment,
   handlePspSuccess,
   handlePspError,
   reset,
@@ -213,6 +228,7 @@ const clearSuccessTimeout = () => {
 };
 
 const resetFlow = () => {
+  charge.reset();
   stage.value = 'list';
   momoData.value = null;
   selectedProvider.value = null;
@@ -248,6 +264,11 @@ watch(() => props.isOpen, (val: any) => {
   if (val !== undefined) isModalVisible.value = val;
 });
 
+// Closing from outside (a controlled `isOpen`) must also stop any prompt being followed.
+watch(isModalVisible, (open) => {
+  if (!open) charge.reset();
+});
+
 const handleOpen = () => {
   isModalVisible.value = true;
   resetFlow();
@@ -277,7 +298,7 @@ const pspNames: Record<string, string> = {
   stripe: 'Stripe',
 };
 
-const providerOptions = computed<CheckoutProviderOption[]>(() => {
+const providerOptions = computed<CheckoutProvider[]>(() => {
   const intent = paymentIntent.value as PaymentIntent | null;
   if (!intent) return [];
 
@@ -318,7 +339,7 @@ const methodList = computed(() =>
 );
 
 /** Reevit's routing choice for a method: the recommended provider if it supports it, else the first that does. */
-const providerFor = (method: PaymentMethod): CheckoutProviderOption | undefined => {
+const providerFor = (method: PaymentMethod): CheckoutProvider | undefined => {
   const recommended = paymentIntent.value?.recommendedPsp?.toLowerCase();
   return (
     providerOptions.value.find((p) => p.provider.toLowerCase() === recommended && p.methods.includes(method)) ||
@@ -326,14 +347,64 @@ const providerFor = (method: PaymentMethod): CheckoutProviderOption | undefined 
   );
 };
 
-// The only method is M-Pesa mobile money: skip the list and ask for the number.
+/**
+ * Reevit's own screens take a method when a provider says `flow: direct` for it and
+ * the checkout came from a server-created session (the charge route is keyed by the
+ * session secret). Anything else keeps the provider's own window.
+ */
+const directFor = (method: PaymentMethod): DirectSelection | undefined => {
+  if (!props.sessionSecret || method !== 'mobile_money') return undefined;
+  const recommended = paymentIntent.value?.recommendedPsp?.toLowerCase();
+  const candidates = providerOptions.value
+    .map((provider) => ({ provider, option: provider.methodOptions?.find((o) => o.method === method && o.flow === 'direct') }))
+    .filter((c): c is DirectSelection => !!c.option);
+  return candidates.find((c) => c.provider.provider.toLowerCase() === recommended) ?? candidates[0];
+};
+const directSelection = computed(() => directFor('mobile_money'));
+
+// The only method is mobile money: skip the list and ask for the number.
 const soleMethod = computed(() => (methodList.value.length === 1 ? methodList.value[0] : null));
+const soleDirect = computed(() => soleMethod.value === 'mobile_money' && !!directSelection.value);
 const directPhone = computed(() => {
   const method = soleMethod.value;
-  if (method !== 'mobile_money') return false;
+  if (soleDirect.value || method !== 'mobile_money') return false;
   return !!providerFor(method)?.provider.toLowerCase().includes('mpesa');
 });
-const activeStage = computed<Stage>(() => (stage.value === 'list' && directPhone.value ? 'phone' : stage.value));
+const activeStage = computed<Stage>(() =>
+  stage.value === 'list' && soleDirect.value ? 'direct' : stage.value === 'list' && directPhone.value ? 'phone' : stage.value
+);
+
+// The client follows `apiBaseUrl`; the state machine only sees this stable wrapper.
+const directClient = computed(() => createDirectChargeClient({ baseUrl: props.apiBaseUrl }));
+const directApi: DirectChargeApi = {
+  charge: (...args) => directClient.value.charge(...args),
+  status: (...args) => directClient.value.status(...args),
+  action: (...args) => directClient.value.action(...args),
+  resend: (...args) => directClient.value.resend(...args),
+};
+/** "MTN MoMo · 024 412 8890", kept for the receipt only; the number is not handed to the merchant. */
+const receiptMethod = ref<string | null>(null);
+const charge = useDirectCharge({
+  api: directApi,
+  sessionSecret: () => props.sessionSecret,
+  provider: () => directSelection.value?.provider.provider ?? '',
+  onSuccess: (attempt: PublicAttempt, input: DirectInput | null) => {
+    const label = input?.network ? NETWORK_LABEL[input.network] : undefined;
+    receiptMethod.value = input && label ? `${label} · ${formatPayerPhone(input.phone)}` : null;
+    completePayment({
+      paymentId: attempt.id,
+      reference: props.reference || '',
+      amount: attempt.amount,
+      currency: attempt.currency,
+      paymentMethod: 'mobile_money',
+      psp: directSelection.value?.provider.provider ?? attempt.provider_display ?? '',
+      pspReference: attempt.id,
+      status: 'success',
+      metadata: { backend_status: attempt.status, rerouted: attempt.rerouted, receipt_url: attempt.receipt_url, network: input?.network },
+    });
+  },
+  onFailure: (failure) => emit('error', { code: failure.code, message: failure.message, recoverable: failure.retryable }),
+});
 
 /** Open the provider's own window for the routed provider (M-Pesa and Stripe render in the dialog). */
 const openProvider = async (psp: string, method: PaymentMethod) => {
@@ -438,7 +509,7 @@ const openProvider = async (psp: string, method: PaymentMethod) => {
  */
 const proceed = async (
   method: PaymentMethod,
-  provider: CheckoutProviderOption,
+  provider: CheckoutProvider,
   buyer?: { phone: string; attempt: number }
 ) => {
   if (picking) return;
@@ -485,6 +556,16 @@ const handlePick = (method: PaymentMethod) => {
     return;
   }
 
+  const direct = directFor(method);
+  if (direct) {
+    // Reevit's own screens: the number first, then the prompt. An earlier prompt keeps being watched.
+    selectedProvider.value = direct.provider.provider as PSPType;
+    selectMethod(method);
+    charge.useAnotherNumber();
+    stage.value = 'direct';
+    return;
+  }
+
   if (method === 'mobile_money' && provider.provider.toLowerCase().includes('mpesa')) {
     // M-Pesa is the one in-widget mobile money flow: ask for the number first.
     selectedProvider.value = provider.provider as PSPType;
@@ -514,6 +595,12 @@ const handleMomoSubmit = (data: MobileMoneyFormData) => {
   void proceed('mobile_money', provider, { phone: data.phone, attempt });
 };
 
+// Mobile money number submitted on Reevit's own form.
+const handleDirectSubmit = (data: MobileMoneyFormData) => {
+  const networks = directSelection.value?.option.networks ?? [];
+  void charge.start({ phone: data.phone, network: networks.includes(data.network) ? data.network : undefined });
+};
+
 // Handle provider callbacks
 const onProviderSuccess = (pspResult: Record<string, unknown>) => {
   void processPayment({ ...pspResult, momoData: momoData.value });
@@ -538,6 +625,8 @@ const handleProviderClose = () => {
 // Back chevron on a detail panel
 const handlePanelBack = () => {
   pickToken += 1;
+  // Leaving mobile money mid-prompt: back to a clean form, the prompt still watched.
+  charge.useAnotherNumber();
   cancelHubtel();
   stage.value = 'list';
   selectedProvider.value = null;
@@ -594,6 +683,11 @@ const dataTheme = computed<'dark' | 'light' | undefined>(() => {
   return undefined;
 });
 
+const momoMpesa = computed(() => {
+  const option = directSelection.value?.option;
+  return option ? option.networks.length === 1 && option.networks[0] === 'mpesa' : displayCurrency.value === 'KES';
+});
+
 const loading = computed(() => status.value === 'loading' || status.value === 'processing');
 
 const psp = computed(() => selectedProvider.value || paymentIntent.value?.recommendedPsp || 'paystack');
@@ -621,6 +715,16 @@ const view = computed<ViewId>(() => {
   if (confirmation.value === 'confirming') return 'confirming';
   if (status.value === 'processing') return 'processing';
   if (!paymentIntent.value) return 'loading';
+  if (activeStage.value === 'direct') {
+    const phase = charge.state.phase;
+    return phase === 'waiting'
+      ? 'momo-wait'
+      : phase === 'code' || phase === 'submitting'
+        ? 'momo-code'
+        : phase === 'failed' && charge.state.failure
+          ? 'momo-fail'
+          : 'momo';
+  }
   if (activeStage.value === 'preparing') return 'preparing';
   if (activeStage.value === 'bridge') return 'bridge';
   if (activeStage.value === 'phone') return 'phone';
@@ -633,18 +737,25 @@ const panelView = computed<ViewId>(() => (view.value === 'preparing' ? 'bridge' 
 // Slide direction: forward into a detail panel, back to the list, fade otherwise.
 // Decided once per view so a later re-render never restarts the animation.
 const direction = ref<'forward' | 'back' | 'fade'>('fade');
-const isDetail = (v: ViewId) => v === 'phone' || v === 'preparing' || v === 'bridge';
+const isDetail = (v: ViewId) => v === 'phone' || v === 'preparing' || v === 'bridge' || v === 'momo';
+const isPrompt = (v: ViewId) => v === 'momo-wait' || v === 'momo-code' || v === 'momo-fail';
 watch(
   panelView,
   (to, from) => {
     direction.value =
-      to === 'list' && isDetail(from) ? 'back' : isDetail(to) && from === 'list' ? 'forward' : 'fade';
+      (to === 'list' && (isDetail(from) || isPrompt(from))) || (to === 'momo' && isPrompt(from))
+        ? 'back'
+        : isDetail(to) && from === 'list'
+          ? 'forward'
+          : 'fade';
   },
   { flush: 'sync' }
 );
 
 // A payment is in flight while a provider window is open or the result is being confirmed.
-const inFlight = computed(() => view.value === 'bridge' || view.value === 'processing');
+const inFlight = computed(
+  () => view.value === 'bridge' || view.value === 'processing' || view.value === 'momo-wait' || view.value === 'momo-code'
+);
 
 const finishReceipt = () => {
   if (result.value) deliverSuccess(result.value as PaymentResult);
@@ -690,6 +801,10 @@ const announce = computed(
       loading: 'Preparing checkout',
       list: 'Choose a payment method',
       phone: 'Mobile money',
+      momo: 'Mobile money',
+      'momo-wait': 'Waiting for your approval',
+      'momo-code': 'Enter your code',
+      'momo-fail': charge.state.failure?.title ?? 'Payment failed',
       preparing: `Opening ${pspName.value}`,
       bridge: `Opening ${pspName.value}`,
       processing: 'Processing payment',
@@ -794,11 +909,12 @@ onUnmounted(() => {
           <ReceiptPanel
             v-else-if="view === 'receipt' && result"
             :reference="result.reference || result.paymentId"
-            :method="METHOD_LABEL[result.paymentMethod] || methodLabel"
+            :method="(result.paymentMethod === 'mobile_money' && receiptMethod) || METHOD_LABEL[result.paymentMethod] || methodLabel"
             :provider="receiptProvider"
             :merchant-name="brandName || 'Checkout'"
             :order-ref="orderRef"
             :amount-text="amountText"
+            :note="result.metadata?.rerouted === true ? FAILOVER_DONE : undefined"
             @done="finishReceipt"
           />
 
@@ -819,6 +935,42 @@ onUnmounted(() => {
               @submit="handleMomoSubmit"
             />
           </template>
+
+          <template v-else-if="view === 'momo'">
+            <PanelHead title="Mobile money" :back="!soleDirect" @back="handlePanelBack" />
+            <MobileMoneyForm
+              :mode="momoMpesa ? 'mpesa' : 'network'"
+              :networks="momoMpesa ? undefined : directSelection?.option.networks"
+              :initial-phone="charge.state.input?.phone || momoData?.phone || props.phone"
+              :submit-label="`Pay ${amountText}`"
+              hide-cancel
+              :loading="charge.state.phase === 'starting'"
+              :notice="charge.state.formNotice"
+              @submit="handleDirectSubmit"
+            />
+          </template>
+
+          <MomoWaitPanel
+            v-else-if="view === 'momo-wait'"
+            :charge="charge"
+            :phone-text="charge.state.input ? formatPayerPhone(charge.state.input.phone) : charge.state.attempt?.next_action?.phone_masked ?? ''"
+            :network="charge.state.input?.network ?? charge.state.attempt?.next_action?.network ?? (displayCurrency === 'KES' ? 'mpesa' : undefined)"
+          />
+
+          <MomoCodePanel
+            v-else-if="view === 'momo-code'"
+            :key="`${charge.state.attempt?.id}:${charge.state.codeKind}`"
+            :charge="charge"
+          />
+
+          <MomoFailurePanel
+            v-else-if="view === 'momo-fail' && charge.state.failure"
+            :charge="charge"
+            :failure="charge.state.failure"
+            :can-choose-another="methodList.length > 1"
+            @choose-another="handlePanelBack"
+            @close="handleClose"
+          />
 
           <template v-else-if="view === 'preparing'">
             <PanelHead v-if="pspLower !== 'mpesa'" :title="methodLabel" back @back="handlePanelBack" />
