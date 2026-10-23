@@ -183,6 +183,8 @@ export interface HubtelConfig {
   onSuccess: (response: Record<string, unknown>) => void;
   onClose: () => void;
   onError?: (error: HubtelCheckoutError) => void;
+  /** Called once Hubtel's hosted checkout is on screen. */
+  onOpen?: () => void;
   /** @deprecated Ignored. Hubtel's hosted checkout already knows the merchant. */
   clientId?: string;
   /** @deprecated Ignored. Set when the payment is created. */
@@ -345,6 +347,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<HubtelCheck
           : await client.confirmPayment(paymentId);
         return { status: data?.status, error };
       },
+      onOpen: () => config.onOpen?.(),
       onSuccess: ({ status, checkoutId }) =>
         config.onSuccess({
           paymentId,

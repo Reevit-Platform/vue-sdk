@@ -1,34 +1,31 @@
 <script setup lang="ts">
 /**
- * LoadingState Component
- * The single brutalist loading screen used for every loading state across
- * the checkout — server connection, PSP connection, payment processing.
+ * LoadingState
+ * The Ledger "working" look. `block` is the centred processing state
+ * (spinner, title, optional line); `line` is the compact spinner line shown
+ * under a panel header while a provider window is opening.
  */
+import Scope from './Scope.vue';
 
 withDefaults(
   defineProps<{
-    /** Small status tag above the bars (e.g. "CONNECTING", "PROCESSING"). */
-    marker?: string;
-    /** Headline. */
     title?: string;
-    /** Sub-line beneath the headline. */
     message?: string;
+    variant?: 'block' | 'line';
   }>(),
-  {
-    marker: 'PROCESSING',
-    title: 'Please wait',
-    message: 'Do not close this window',
-  }
+  { title: 'Please wait', variant: 'block' }
 );
 </script>
 
 <template>
-  <div class="reevit-brut__state">
-    <span class="reevit-brut__state-marker">{{ marker }}</span>
-    <div class="reevit-brut__bars">
-      <span /><span /><span /><span /><span />
+  <Scope>
+    <p v-if="variant === 'line'" class="reevit-opening" data-reevit="status" role="status">
+      <span class="reevit-spin" aria-hidden="true" />{{ title }}
+    </p>
+    <div v-else class="reevit-processing" data-reevit="processing">
+      <span class="reevit-spin reevit-spin--lg" aria-hidden="true" />
+      <h2 class="reevit-panel-title" tabindex="-1" data-reevit="panel-title">{{ title }}</h2>
+      <p v-if="message" class="reevit-text">{{ message }}</p>
     </div>
-    <h3 class="reevit-brut__state-title">{{ title }}</h3>
-    <p class="reevit-brut__state-sub">{{ message }}</p>
-  </div>
+  </Scope>
 </template>

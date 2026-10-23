@@ -217,9 +217,9 @@ export function useReevit(options: UseReevitOptions) {
   const initialize = async (
     method?: PaymentMethod,
     options?: { preferredProvider?: string; allowedProviders?: string[] }
-  ) => {
+  ): Promise<PaymentIntent | undefined> => {
     if (config.initialPaymentIntent) {
-      return;
+      return config.initialPaymentIntent as PaymentIntent;
     }
 
     let requestId = 0;
@@ -244,7 +244,7 @@ export function useReevit(options: UseReevitOptions) {
       intentKey = idempotencyKey;
 
       if (currentIntentKey.value === idempotencyKey && state.value.paymentIntent) {
-        return;
+        return state.value.paymentIntent;
       }
 
       currentIntentKey.value = idempotencyKey;
@@ -348,6 +348,7 @@ export function useReevit(options: UseReevitOptions) {
       const paymentIntent = mapToPaymentIntent(data, { ...config, reference, idempotencyKey });
       dispatch({ type: 'INIT_SUCCESS', payload: paymentIntent });
       // Don't reset initializing here - once initialized, stay initialized until reset()
+      return paymentIntent;
     } catch (err) {
       if (intentKey) {
         clearIntentCacheEntry(intentKey);
