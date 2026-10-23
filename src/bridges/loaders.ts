@@ -183,6 +183,8 @@ export interface HubtelConfig {
   onSuccess: (response: Record<string, unknown>) => void;
   onClose: () => void;
   onError?: (error: HubtelCheckoutError) => void;
+  /** Called once Hubtel's hosted checkout is on screen. */
+  onOpen?: () => void;
   /** @deprecated Ignored. Hubtel's hosted checkout already knows the merchant. */
   clientId?: string;
   /** @deprecated Ignored. Set when the payment is created. */
@@ -263,6 +265,10 @@ export interface MonnifyConfig {
 export interface MPesaConfig {
   phoneNumber: string;
   amount: number;
+  /** Currency of `amount` (KES or TZS). Sent with the request when given. */
+  currency?: string;
+  /** Extra request headers, e.g. `x-reevit-public-key`. */
+  headers?: Record<string, string>;
   reference: string;
   description?: string;
   onInitiated: () => void;
@@ -345,6 +351,7 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<HubtelCheck
           : await client.confirmPayment(paymentId);
         return { status: data?.status, error };
       },
+      onOpen: () => config.onOpen?.(),
       onSuccess: ({ status, checkoutId }) =>
         config.onSuccess({
           paymentId,
@@ -499,10 +506,11 @@ export async function initiateMPesaSTKPush(
   try {
     const response = await fetch(apiEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...config.headers },
       body: JSON.stringify({
         phone_number: config.phoneNumber,
         amount: config.amount,
+        ...(config.currency ? { currency: config.currency } : {}),
         reference: config.reference,
         description: config.description,
       }),
