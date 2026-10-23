@@ -9,6 +9,8 @@ const props = defineProps<{
   merchantName: string;
   orderRef?: string;
   amountText: string;
+  /** One quiet line under the receipt, e.g. that a second provider took the payment. */
+  note?: string;
 }>();
 
 const emit = defineEmits<{ (e: 'done'): void }>();
@@ -58,6 +60,7 @@ const download = () => {
       <div><dt>Provider</dt><dd>{{ provider }}</dd></div>
       <div><dt>Date</dt><dd class="reevit-mono">{{ paidAt }}</dd></div>
     </dl>
+    <p v-if="note" class="reevit-note" data-reevit="note">{{ note }}</p>
     <button type="button" class="reevit-cta" data-reevit="done" data-first="" @click="emit('done')">Done</button>
     <button type="button" class="reevit-cta-secondary" data-reevit="download" @click="download">Download receipt</button>
   </div>

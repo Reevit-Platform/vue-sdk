@@ -28,6 +28,8 @@ import {
 } from '@reevit/core';
 
 import { isDefinitiveFailure, isPaymentFailure, pollPaymentStatus } from '../utils/pollPaymentStatus';
+import type { CheckoutProvider, MethodOption } from '../types';
+import { SDK_VERSION } from '../version';
 
 const DEFAULT_PUBLIC_API_BASE_URL = 'https://api.reevit.io';
 
@@ -87,7 +89,7 @@ async function selectCheckoutSession(
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
         'X-Reevit-Client': '@reevit/vue',
-        'X-Reevit-Client-Version': '0.12.1',
+        'X-Reevit-Client-Version': SDK_VERSION,
       },
       body: JSON.stringify({
         method,
@@ -195,9 +197,35 @@ function normalizeProviderMethod(method: string): PaymentMethod | null {
   return null;
 }
 
+interface RawMethodOption {
+  method: string;
+  flow?: string;
+  networks?: string[];
+  needs?: string[];
+  voucher_networks?: string[];
+}
+
+function mapMethodOptions(options?: RawMethodOption[]): MethodOption[] | undefined {
+  if (!options) return undefined;
+  return options
+    .map((option) => {
+      const method = normalizeProviderMethod(option.method);
+      if (!method) return null;
+      return {
+        method,
+        // Anything the server does not call `direct` is the provider's own window.
+        flow: option.flow === 'direct' ? 'direct' : 'hosted',
+        networks: (option.networks ?? []).map((n) => n.toLowerCase()),
+        needs: option.needs ?? [],
+        voucherNetworks: (option.voucher_networks ?? []).map((n) => n.toLowerCase()),
+      } as MethodOption;
+    })
+    .filter(Boolean) as MethodOption[];
+}
+
 function mapAvailableProviders(
-  providers?: Array<{ provider: string; name: string; methods: string[]; countries?: string[] }>
-): CheckoutProviderOption[] | undefined {
+  providers?: Array<{ provider: string; name: string; methods: string[]; countries?: string[]; method_options?: RawMethodOption[] }>
+): CheckoutProvider[] | undefined {
   if (!providers || providers.length === 0) return undefined;
 
   return providers
@@ -211,6 +239,7 @@ function mapAvailableProviders(
         name: provider.name,
         methods,
         countries: provider.countries,
+        methodOptions: mapMethodOptions(provider.method_options),
       };
     })
     .filter((provider) => provider.methods.length > 0);
@@ -646,6 +675,17 @@ export function useReevit(options: UseReevitOptions) {
     }
   };
 
+  /**
+   * A payment the backend itself reported as `succeeded` (Reevit's own mobile money
+   * screens read it from the status route). No further confirmation is needed.
+   */
+  const completePayment = (result: PaymentResult) => {
+    settleController?.abort();
+    confirmation.value = 'idle';
+    dispatch({ type: 'PROCESS_SUCCESS', payload: result });
+    onSuccess?.(result);
+  };
+
   // Handle PSP success
   const handlePspSuccess = async (pspData: Record<string, unknown>) => {
     await processPayment(pspData);
@@ -724,6 +764,7 @@ export function useReevit(options: UseReevitOptions) {
     initialize,
     selectMethod,
     processPayment,
+    completePayment,
     handlePspSuccess,
     handlePspError,
     reset,
