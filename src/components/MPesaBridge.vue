@@ -1,42 +1,65 @@
 <script setup lang="ts">
 /**
  * MPesaBridge
- * M-Pesa STK Push (Kenya/Tanzania). The push itself is server-to-server; this
- * component sends the request and shows the waiting and failed panels while the
- * customer approves on their phone. The final result arrives by webhook.
+ * M-Pesa STK Push (Kenya/Tanzania). Creating the payment is what sends the
+ * push: the server pushes the prompt to the number the payment was created
+ * with. This component only waits. It polls the public confirm-intent route
+ * and ends on `succeeded` or a final failure, never on `pending`.
+ *
+ * Phase 0 stopgap: replaced by the Phase 1 status endpoint.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { initiateMPesaSTKPush } from '../bridges/loaders';
-import LoadingState from './LoadingState.vue';
+import { ReevitAPIClient } from '@reevit/core';
+import { pollPaymentStatus } from '../utils/pollPaymentStatus';
 import Scope from './Scope.vue';
+
+/** Poll every 4 s, and give up after 2 min (the prompt expires on the handset around then). */
+const POLL_INTERVAL_MS = 4000;
+const POLL_TIMEOUT_MS = 120_000;
 
 const props = withDefaults(
   defineProps<{
-    /** API endpoint to initiate STK Push. */
-    apiEndpoint: string;
+    /** The payment the STK push was sent for. */
+    paymentId: string;
+    /** The payment's client secret, for the public confirm-intent route. */
+    clientSecret?: string;
+    /** Public key, used only when there is no client secret. */
+    publicKey?: string;
+    /** API base URL (defaults to production). */
+    apiBaseUrl?: string;
     /** Customer phone number in format 254XXXXXXXXX. */
     phoneNumber: string;
-    amount: number;
-    currency?: string;
-    reference: string;
-    /** Custom headers for the request (e.g. the public key). */
-    headers?: Record<string, string>;
-    description?: string;
-    /** Send the STK Push on mount instead of waiting for the "Send payment request" button. */
-    autoStart?: boolean;
+    /** Merchant order reference, passed back with the result. */
+    reference?: string;
+    /** Shows a "Try again" action on the failure panel (a new prompt to the same number). */
+    canRetry?: boolean;
     /** Shows a "Use another number" action while waiting or after a failure. */
     canChangeNumber?: boolean;
   }>(),
-  { autoStart: false, canChangeNumber: false }
+  { canRetry: false, canChangeNumber: false }
 );
 
 const emit = defineEmits<{
-  (e: 'initiated', checkoutRequestId: string | undefined): void;
-  (e: 'error', error: { code: string; message: string }): void;
+  (e: 'success', result: { transactionId: string; reference: string; pspReference: string }): void;
+  (e: 'error', error: { code: string; message: string; recoverable: boolean }): void;
+  (e: 'retry'): void;
   (e: 'changeNumber'): void;
 }>();
 
-type MPesaState = 'idle' | 'initiating' | 'waiting' | 'failed';
+type FailureKind = 'declined' | 'timeout';
+
+const FAILURE_COPY: Record<FailureKind, { title: string; message: string; code: string }> = {
+  declined: {
+    title: 'Payment not approved',
+    message: 'The M-Pesa request was declined or cancelled.',
+    code: 'PAYMENT_DECLINED',
+  },
+  timeout: {
+    title: 'No response in time',
+    message: 'We didn’t get an approval from your phone.',
+    code: 'PAYMENT_TIMEOUT',
+  },
+};
 
 /** 254722334455 -> "+254 722 334 455". Anything else is shown as given. */
 function formatKenyaPhone(phone: string): string {
@@ -47,70 +70,51 @@ function formatKenyaPhone(phone: string): string {
   return phone;
 }
 
-const state = ref<MPesaState>('idle');
-const error = ref<string | null>(null);
-const checkoutRequestId = ref<string | null>(null);
-let alive = true;
+const failure = ref<FailureKind | null>(null);
+const controller = new AbortController();
 
-const initiateSTKPush = async () => {
-  state.value = 'initiating';
-  error.value = null;
+onMounted(async () => {
+  const client = new ReevitAPIClient({ publicKey: props.publicKey, baseUrl: props.apiBaseUrl });
+  const { paymentId, clientSecret } = props;
 
-  let failure: string | undefined;
-  const result = await initiateMPesaSTKPush(
-    {
-      phoneNumber: props.phoneNumber,
-      amount: props.amount,
-      currency: props.currency,
-      headers: props.headers,
-      reference: props.reference,
-      description: props.description || `Payment ${props.reference}`,
-      onInitiated: () => {},
-      onSuccess: () => {},
-      onError: (err) => { failure = err.message; },
-    },
-    props.apiEndpoint
-  );
-  if (!alive) return;
+  const outcome = await pollPaymentStatus({
+    check: () => (clientSecret ? client.confirmPaymentIntent(paymentId, clientSecret) : client.confirmPayment(paymentId)),
+    signal: controller.signal,
+    intervalMs: POLL_INTERVAL_MS,
+    timeoutMs: POLL_TIMEOUT_MS,
+  });
 
-  if (result.status === 'failed') {
-    const message = failure || result.message || 'Failed to initiate M-Pesa payment';
-    error.value = message;
-    state.value = 'failed';
-    emit('error', { code: 'MPESA_INIT_ERROR', message });
+  if (outcome.kind === 'aborted') return;
+  if (outcome.kind === 'succeeded') {
+    const pspReference = (outcome.data.provider_ref_id as string | undefined) || paymentId;
+    emit('success', { transactionId: pspReference, reference: props.reference || '', pspReference });
     return;
   }
 
-  checkoutRequestId.value = result.transactionId ?? null;
-  state.value = 'waiting';
-  emit('initiated', result.transactionId);
-};
-
-// The checkout has already collected the number on its own screen, so it
-// starts the push straight away instead of asking for a second tap.
-onMounted(() => {
-  if (props.autoStart) void initiateSTKPush();
+  const kind: FailureKind = outcome.kind === 'timeout' ? 'timeout' : 'declined';
+  failure.value = kind;
+  emit('error', { code: FAILURE_COPY[kind].code, message: FAILURE_COPY[kind].message, recoverable: true });
 });
-onBeforeUnmount(() => { alive = false; });
+onBeforeUnmount(() => controller.abort());
 
 const shownPhone = computed(() => formatKenyaPhone(props.phoneNumber));
+const copy = computed(() => (failure.value ? FAILURE_COPY[failure.value] : null));
 </script>
 
 <template>
-  <Scope v-if="state === 'idle'">
-    <div class="reevit-wait" data-reevit="bridge-idle">
-      <h2 class="reevit-panel-title" tabindex="-1" data-reevit="panel-title">Pay with M-Pesa</h2>
-      <p class="reevit-text">We’ll send a prompt to <span class="reevit-mono">{{ shownPhone }}</span>.</p>
-      <button type="button" class="reevit-cta" data-reevit="cta" data-first="" @click="initiateSTKPush">
-        Send payment request
-      </button>
+  <Scope v-if="copy">
+    <div class="reevit-result" data-reevit="failure" :data-failure="failure ?? undefined">
+      <h2 class="reevit-panel-title" tabindex="-1" data-reevit="panel-title">
+        <span class="reevit-fail-dot" aria-hidden="true" />{{ copy.title }}
+      </h2>
+      <p class="reevit-text">{{ copy.message }}</p>
+      <button v-if="canRetry" type="button" class="reevit-cta" data-reevit="cta" data-first="" @click="emit('retry')">Try again</button>
+      <button v-if="canChangeNumber" type="button" class="reevit-cta-secondary" @click="emit('changeNumber')">Use another number</button>
     </div>
   </Scope>
 
-  <LoadingState v-else-if="state === 'initiating'" variant="line" title="Sending a prompt to your phone…" />
-
-  <Scope v-else-if="state === 'waiting'">
-    <div class="reevit-wait" data-reevit="mpesa-waiting" :data-request-id="checkoutRequestId ?? undefined">
+  <Scope v-else>
+    <div class="reevit-wait" data-reevit="mpesa-waiting" :data-payment-id="paymentId">
       <span class="reevit-spin reevit-spin--lg" aria-hidden="true" />
       <h2 class="reevit-panel-title" tabindex="-1" data-reevit="panel-title">Approve on your phone</h2>
       <p class="reevit-text">Check <span class="reevit-mono">{{ shownPhone }}</span> for an M-Pesa prompt.</p>
@@ -118,17 +122,6 @@ const shownPhone = computed(() => formatKenyaPhone(props.phoneNumber));
       <div v-if="canChangeNumber" class="reevit-links">
         <button type="button" class="reevit-link" data-reevit="change-number" @click="emit('changeNumber')">Use another number</button>
       </div>
-    </div>
-  </Scope>
-
-  <Scope v-else-if="state === 'failed'">
-    <div class="reevit-result" data-reevit="failure">
-      <h2 class="reevit-panel-title" tabindex="-1" data-reevit="panel-title">
-        <span class="reevit-fail-dot" aria-hidden="true" />Payment request failed
-      </h2>
-      <p class="reevit-text">{{ error || 'Something went wrong. Please try again.' }}</p>
-      <button type="button" class="reevit-cta" data-reevit="cta" data-first="" @click="initiateSTKPush">Try again</button>
-      <button v-if="canChangeNumber" type="button" class="reevit-cta-secondary" @click="emit('changeNumber')">Use another number</button>
     </div>
   </Scope>
 </template>

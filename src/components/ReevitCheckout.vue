@@ -24,6 +24,7 @@ import type {
 
 import CheckoutShell from './CheckoutShell.vue';
 import FailurePanel from './FailurePanel.vue';
+import UnconfirmedPanel from './UnconfirmedPanel.vue';
 import LoadingState from './LoadingState.vue';
 import MethodList from './MethodList.vue';
 import MobileMoneyForm from './MobileMoneyForm.vue';
@@ -63,7 +64,7 @@ const PROVIDER_FOOTER: Record<string, { src: string; kind: 'icon' | 'word' }> = 
 };
 
 type Stage = 'list' | 'phone' | 'preparing' | 'bridge';
-type ViewId = 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'receipt' | 'failure';
+type ViewId = 'loading' | 'list' | 'phone' | 'preparing' | 'bridge' | 'processing' | 'confirming' | 'unconfirmed' | 'receipt' | 'failure';
 
 const titleCase = (value: string) => value.replace(/^\w/, (c) => c.toUpperCase());
 
@@ -96,6 +97,8 @@ const emit = defineEmits<{
   (e: 'success', result: any): void;
   (e: 'error', error: any): void;
   (e: 'close'): void;
+  /** Checkout state changes, including `confirming` and `pending` while a paid provider payment is unconfirmed. */
+  (e: 'stateChange', state: string): void;
 }>();
 
 /**
@@ -124,6 +127,7 @@ const {
   selectedMethod,
   result,
   error,
+  confirmation,
   initialize,
   selectMethod,
   processPayment,
@@ -165,6 +169,7 @@ const {
   },
   onError: (err) => emit('error', err),
   onClose: () => emit('close'),
+  onStateChange: (state) => emit('stateChange', state),
 });
 
 const isModalVisible = ref(props.isOpen ?? false);
@@ -183,6 +188,14 @@ let successDelivered = false;
 let picking = false;
 /** Bumped when the shopper backs out, so a stale intent response cannot reopen a provider window. */
 let pickToken = 0;
+/**
+ * M-Pesa prompts sent in this checkout. The first is attempt 0; every later one
+ * (a retry, or a corrected number) is a fresh intent, so it sends a fresh prompt
+ * instead of replaying the failed one. The backend allows attempts 0 to 3.
+ */
+let promptsSent = 0;
+/** The backend refuses a checkout-session selection past attempt 3. */
+const MAX_PROMPT_ATTEMPT = 3;
 let hubtelCheckout: { cancel: () => void } | null = null;
 
 /**
@@ -423,7 +436,11 @@ const openProvider = async (psp: string, method: PaymentMethod) => {
  * Create (or reuse) a method-specific intent, then hand off to the provider.
  * A second tap while that runs is ignored.
  */
-const proceed = async (method: PaymentMethod, provider: CheckoutProviderOption) => {
+const proceed = async (
+  method: PaymentMethod,
+  provider: CheckoutProviderOption,
+  buyer?: { phone: string; attempt: number }
+) => {
   if (picking) return;
   picking = true;
   const token = ++pickToken;
@@ -434,7 +451,11 @@ const proceed = async (method: PaymentMethod, provider: CheckoutProviderOption) 
 
   try {
     if (!props.initialPaymentIntent) {
-      const intent = await initialize(method, { allowedProviders: [provider.provider] });
+      const intent = await initialize(method, {
+        allowedProviders: [provider.provider],
+        phone: buyer?.phone,
+        attempt: buyer?.attempt,
+      });
       if (token !== pickToken) return;
       if (!intent) {
         stage.value = 'list';
@@ -479,8 +500,18 @@ const handlePick = (method: PaymentMethod) => {
 const handleMomoSubmit = (data: MobileMoneyFormData) => {
   const provider = providerFor('mobile_money');
   if (!provider) return;
+  const attempt = promptsSent;
+  if (attempt > MAX_PROMPT_ATTEMPT) {
+    emit('error', {
+      code: 'TOO_MANY_ATTEMPTS',
+      message: 'Too many attempts. Please close this window and start again.',
+      recoverable: false,
+    });
+    return;
+  }
+  promptsSent += 1;
   momoData.value = data;
-  void proceed('mobile_money', provider);
+  void proceed('mobile_money', provider, { phone: data.phone, attempt });
 };
 
 // Handle provider callbacks
@@ -586,6 +617,8 @@ const showFailure = computed(() => (status.value === 'failed' && !!error.value) 
 const view = computed<ViewId>(() => {
   if (status.value === 'success' && result.value) return 'receipt';
   if (showFailure.value) return 'failure';
+  if (confirmation.value === 'unconfirmed') return 'unconfirmed';
+  if (confirmation.value === 'confirming') return 'confirming';
   if (status.value === 'processing') return 'processing';
   if (!paymentIntent.value) return 'loading';
   if (activeStage.value === 'preparing') return 'preparing';
@@ -660,6 +693,8 @@ const announce = computed(
       preparing: `Opening ${pspName.value}`,
       bridge: `Opening ${pspName.value}`,
       processing: 'Processing payment',
+      confirming: 'Confirming your payment',
+      unconfirmed: 'Still confirming this payment',
       receipt: 'Payment received',
       failure: 'Payment failed',
     })[view.value]
@@ -679,12 +714,7 @@ const failureMessage = computed(
 );
 
 // Bridge props
-const mpesaEndpoint = computed(
-  () => `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${paymentIntent.value?.id}/mpesa`
-);
-const mpesaReference = computed(
-  () => paymentIntent.value?.reference || props.reference || `mpesa_${paymentIntent.value?.id ?? ''}`
-);
+const mpesaReference = computed(() => paymentIntent.value?.reference || props.reference);
 const bridgeTitle = computed(() =>
   pspLower.value === 'hubtel' && hubtelOpen.value
     ? 'Complete your payment with Hubtel'
@@ -753,6 +783,14 @@ onUnmounted(() => {
             message="Please don’t close this window."
           />
 
+          <LoadingState
+            v-else-if="view === 'confirming'"
+            title="Confirming your payment"
+            message="This can take a minute. You don’t need to pay again."
+          />
+
+          <UnconfirmedPanel v-else-if="view === 'unconfirmed'" @done="handleClose" />
+
           <ReceiptPanel
             v-else-if="view === 'receipt' && result"
             :reference="result.reference || result.paymentId"
@@ -792,16 +830,18 @@ onUnmounted(() => {
             <PanelHead v-if="pspLower !== 'mpesa'" :title="methodLabel" back @back="handleProviderClose" />
             <MPesaBridge
               v-if="pspLower === 'mpesa'"
-              :api-endpoint="mpesaEndpoint"
+              :key="paymentIntent?.id"
+              :payment-id="paymentIntent?.id || ''"
+              :client-secret="paymentIntent?.clientSecret"
+              :public-key="props.publicKey"
+              :api-base-url="props.apiBaseUrl"
               :phone-number="momoData?.phone || props.phone || ''"
-              :amount="displayAmount"
-              :currency="displayCurrency"
-              :headers="{ 'x-reevit-public-key': props.publicKey || '' }"
               :reference="mpesaReference"
-              :description="`Payment ${paymentIntent?.reference || props.reference || ''}`"
-              auto-start
+              :can-retry="!!momoData"
               can-change-number
+              @retry="momoData && handleMomoSubmit(momoData)"
               @change-number="stage = 'phone'"
+              @success="onProviderSuccess"
               @error="(err) => emit('error', err)"
             />
             <StripeBridge

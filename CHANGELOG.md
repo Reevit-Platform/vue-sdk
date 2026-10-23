@@ -2,6 +2,22 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [0.12.1] - Unreleased
+
+### Fixed
+
+- **M-Pesa now completes.** A Phase 0 stopgap; the next release replaces it with a proper status endpoint.
+  - `MPesaBridge` no longer POSTs to `/v1/payments/{id}/mpesa`, a route the backend does not have, with an `x-reevit-public-key` header its CORS policy rejects. Creating the payment already sends the STK push.
+  - The prompt goes to the number the shopper typed. The number is sent with the intent (public-key mode) and with the checkout-session `select` call (new optional `phone`), so the server pushes to it. Session mode needs the backend that accepts `phone` on `select`.
+  - The bridge checks the payment every 4 seconds (backing off on errors) and ends only on `succeeded` (receipt) or a final failure (failure panel with **Try again** and **Use another number**). It gives up after 2 minutes with "No response in time". Polling stops when the checkout closes.
+  - Try again sends a fresh prompt: each retry or corrected number creates a new payment (`attempt` 1 to 3 on `select`) instead of replaying the failed one.
+  - **A pending payment is never success, and never a retryable failure.** `useReevit.processPayment` used to report every provider "success" as paid. Now, when a popup provider (Paystack, Flutterwave, Monnify, Hubtel, Stripe) reports success but the backend still says `pending`, the buyer sees a calm "Confirming your payment" state with no Try again (they may already be debited), and can close it without the leave prompt or cancelling the payment. It keeps checking (4 s, backing off on errors) for up to 2 minutes: `succeeded` shows the receipt and emits `success`; a final failure shows the failure panel. The same goes for a first check that fails without a verdict (network error, timeout, 5xx, 429, unreadable answer): it is treated as pending, not as a failure. Only a definitive answer (a terminal status, or a 4xx such as a 402 decline) shows the failure panel straight away. If it is still pending at the deadline the panel reads "We’re still confirming this payment" with **Done** only; `success` and `error` are not emitted. The new `stateChange` event reports `confirming`, then `pending`.
+
+### Changed
+
+- **`MPesaBridge` props and events.** It takes `paymentId`, `clientSecret`, `publicKey`, `apiBaseUrl`, `phoneNumber`, `reference`, `canRetry` and `canChangeNumber`, and emits `success`, `error`, `retry` and `changeNumber`. `apiEndpoint`, `amount`, `currency`, `headers`, `description`, `autoStart` and the `initiated` event are gone: the old flow never worked.
+- **Removed `initiateMPesaSTKPush`** and its `MPesaConfig` / `MPesaSTKPushResult` types, which called the missing route.
+
 ## [0.12.0] - Unreleased
 
 ### Added
