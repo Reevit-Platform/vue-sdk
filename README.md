@@ -273,20 +273,20 @@ await openMonnifyModal({
 
 ### M-Pesa (Kenya/Tanzania)
 
-```ts
-import { initiateMPesaSTKPush } from '@reevit/vue';
+M-Pesa uses STK Push: the customer approves a prompt on their phone. `ReevitCheckout` asks for the number, creates the payment with it (that is what sends the prompt), then waits. It checks the payment every 4 seconds and finishes only when the payment has `succeeded` or has failed, or after 2 minutes with no approval.
 
-const result = await initiateMPesaSTKPush(
-  {
-    phoneNumber: '254712345678',
-    amount: 500,
-    reference: 'TXN_12345',
-    onInitiated: () => console.log('STK Push sent'),
-    onSuccess: (result) => console.log('Paid:', result.transactionId),
-    onError: (err) => console.error(err.message),
-  },
-  '/api/mpesa/stk-push' // Your backend endpoint
-);
+If you build your own screen, render `MPesaBridge` for a payment that already exists. It does not send the prompt, it only waits for the result.
+
+```vue
+<MPesaBridge
+  :payment-id="intent.id"
+  :client-secret="intent.clientSecret"
+  phone-number="254712345678"
+  can-retry
+  @success="(result) => console.log('Paid', result.pspReference)"
+  @error="(err) => console.error(err.code, err.message)"
+  @retry="createAnotherPayment"
+/>
 ```
 
 ## Supported PSPs

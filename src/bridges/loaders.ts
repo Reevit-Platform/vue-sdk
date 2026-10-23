@@ -262,20 +262,6 @@ export interface MonnifyConfig {
   onError?: (error: { message: string }) => void;
 }
 
-export interface MPesaConfig {
-  phoneNumber: string;
-  amount: number;
-  /** Currency of `amount` (KES or TZS). Sent with the request when given. */
-  currency?: string;
-  /** Extra request headers, e.g. `x-reevit-public-key`. */
-  headers?: Record<string, string>;
-  reference: string;
-  description?: string;
-  onInitiated: () => void;
-  onSuccess: (response: { transactionId: string;[key: string]: unknown }) => void;
-  onError: (error: { message: string }) => void;
-}
-
 /**
  * Opens Paystack popup
  */
@@ -479,62 +465,4 @@ export async function openMonnifyModal(config: MonnifyConfig): Promise<void> {
     },
     onClose: config.onClose,
   });
-}
-
-/**
- * M-Pesa STK Push
- * Note: M-Pesa uses server-to-server STK Push, the customer receives a prompt on their phone.
- * This function handles the UI state while waiting for the push to be accepted.
- */
-export interface MPesaSTKPushResult {
-  status: 'initiated' | 'success' | 'failed' | 'cancelled';
-  message?: string;
-  transactionId?: string;
-}
-
-/**
- * Initiates M-Pesa STK Push via your backend
- * The actual push is server-side; this handles the UI flow.
- */
-export async function initiateMPesaSTKPush(
-  config: MPesaConfig,
-  apiEndpoint: string
-): Promise<MPesaSTKPushResult> {
-  // Notify UI that STK push is being initiated
-  config.onInitiated();
-
-  try {
-    const response = await fetch(apiEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...config.headers },
-      body: JSON.stringify({
-        phone_number: config.phoneNumber,
-        amount: config.amount,
-        ...(config.currency ? { currency: config.currency } : {}),
-        reference: config.reference,
-        description: config.description,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const message = errorData.message || 'Failed to initiate M-Pesa payment';
-      config.onError({ message });
-      return { status: 'failed', message };
-    }
-
-    const data = await response.json();
-
-    // STK Push initiated successfully - customer will receive prompt
-    // The actual success will come via webhook
-    return {
-      status: 'initiated',
-      message: 'Please check your phone and enter your M-Pesa PIN to complete the payment.',
-      transactionId: data.checkout_request_id || data.transaction_id,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Network error';
-    config.onError({ message });
-    return { status: 'failed', message };
-  }
 }

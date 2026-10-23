@@ -2,6 +2,22 @@
 
 All notable changes to `@reevit/vue` will be documented in this file.
 
+## [0.12.1] - Unreleased
+
+### Fixed
+
+- **M-Pesa now completes.** A Phase 0 stopgap; the next release replaces it with a proper status endpoint.
+  - `MPesaBridge` no longer POSTs to `/v1/payments/{id}/mpesa`, a route the backend does not have, with an `x-reevit-public-key` header its CORS policy rejects. Creating the payment already sends the STK push.
+  - The prompt goes to the number the shopper typed. The number is sent with the intent (public-key mode) and with the checkout-session `select` call (new optional `phone`), so the server pushes to it. Session mode needs the backend that accepts `phone` on `select`.
+  - The bridge checks the payment every 4 seconds (backing off on errors) and ends only on `succeeded` (receipt) or a final failure (failure panel with **Try again** and **Use another number**). It gives up after 2 minutes with "No response in time". Polling stops when the checkout closes.
+  - Try again sends a fresh prompt: each retry or corrected number creates a new payment (`attempt` 1 to 3 on `select`) instead of replaying the failed one.
+  - `useReevit.processPayment` no longer reports a payment as paid because the provider said so. It reports success only for `succeeded`, re-checks a pending payment for up to 20 seconds, and otherwise reports an error.
+
+### Changed
+
+- **`MPesaBridge` props and events.** It takes `paymentId`, `clientSecret`, `publicKey`, `apiBaseUrl`, `phoneNumber`, `reference`, `canRetry` and `canChangeNumber`, and emits `success`, `error`, `retry` and `changeNumber`. `apiEndpoint`, `amount`, `currency`, `headers`, `description`, `autoStart` and the `initiated` event are gone: the old flow never worked.
+- **Removed `initiateMPesaSTKPush`** and its `MPesaConfig` / `MPesaSTKPushResult` types, which called the missing route.
+
 ## [0.12.0] - Unreleased
 
 ### Added

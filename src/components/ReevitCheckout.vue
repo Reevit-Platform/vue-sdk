@@ -183,6 +183,14 @@ let successDelivered = false;
 let picking = false;
 /** Bumped when the shopper backs out, so a stale intent response cannot reopen a provider window. */
 let pickToken = 0;
+/**
+ * M-Pesa prompts sent in this checkout. The first is attempt 0; every later one
+ * (a retry, or a corrected number) is a fresh intent, so it sends a fresh prompt
+ * instead of replaying the failed one. The backend allows attempts 0 to 3.
+ */
+let promptsSent = 0;
+/** The backend refuses a checkout-session selection past attempt 3. */
+const MAX_PROMPT_ATTEMPT = 3;
 let hubtelCheckout: { cancel: () => void } | null = null;
 
 /**
@@ -423,7 +431,11 @@ const openProvider = async (psp: string, method: PaymentMethod) => {
  * Create (or reuse) a method-specific intent, then hand off to the provider.
  * A second tap while that runs is ignored.
  */
-const proceed = async (method: PaymentMethod, provider: CheckoutProviderOption) => {
+const proceed = async (
+  method: PaymentMethod,
+  provider: CheckoutProviderOption,
+  buyer?: { phone: string; attempt: number }
+) => {
   if (picking) return;
   picking = true;
   const token = ++pickToken;
@@ -434,7 +446,11 @@ const proceed = async (method: PaymentMethod, provider: CheckoutProviderOption) 
 
   try {
     if (!props.initialPaymentIntent) {
-      const intent = await initialize(method, { allowedProviders: [provider.provider] });
+      const intent = await initialize(method, {
+        allowedProviders: [provider.provider],
+        phone: buyer?.phone,
+        attempt: buyer?.attempt,
+      });
       if (token !== pickToken) return;
       if (!intent) {
         stage.value = 'list';
@@ -479,8 +495,18 @@ const handlePick = (method: PaymentMethod) => {
 const handleMomoSubmit = (data: MobileMoneyFormData) => {
   const provider = providerFor('mobile_money');
   if (!provider) return;
+  const attempt = promptsSent;
+  if (attempt > MAX_PROMPT_ATTEMPT) {
+    emit('error', {
+      code: 'TOO_MANY_ATTEMPTS',
+      message: 'Too many attempts. Please close this window and start again.',
+      recoverable: false,
+    });
+    return;
+  }
+  promptsSent += 1;
   momoData.value = data;
-  void proceed('mobile_money', provider);
+  void proceed('mobile_money', provider, { phone: data.phone, attempt });
 };
 
 // Handle provider callbacks
@@ -679,12 +705,7 @@ const failureMessage = computed(
 );
 
 // Bridge props
-const mpesaEndpoint = computed(
-  () => `${props.apiBaseUrl || 'https://api.reevit.io'}/v1/payments/${paymentIntent.value?.id}/mpesa`
-);
-const mpesaReference = computed(
-  () => paymentIntent.value?.reference || props.reference || `mpesa_${paymentIntent.value?.id ?? ''}`
-);
+const mpesaReference = computed(() => paymentIntent.value?.reference || props.reference);
 const bridgeTitle = computed(() =>
   pspLower.value === 'hubtel' && hubtelOpen.value
     ? 'Complete your payment with Hubtel'
@@ -792,16 +813,18 @@ onUnmounted(() => {
             <PanelHead v-if="pspLower !== 'mpesa'" :title="methodLabel" back @back="handleProviderClose" />
             <MPesaBridge
               v-if="pspLower === 'mpesa'"
-              :api-endpoint="mpesaEndpoint"
+              :key="paymentIntent?.id"
+              :payment-id="paymentIntent?.id || ''"
+              :client-secret="paymentIntent?.clientSecret"
+              :public-key="props.publicKey"
+              :api-base-url="props.apiBaseUrl"
               :phone-number="momoData?.phone || props.phone || ''"
-              :amount="displayAmount"
-              :currency="displayCurrency"
-              :headers="{ 'x-reevit-public-key': props.publicKey || '' }"
               :reference="mpesaReference"
-              :description="`Payment ${paymentIntent?.reference || props.reference || ''}`"
-              auto-start
+              :can-retry="!!momoData"
               can-change-number
+              @retry="momoData && handleMomoSubmit(momoData)"
               @change-number="stage = 'phone'"
+              @success="onProviderSuccess"
               @error="(err) => emit('error', err)"
             />
             <StripeBridge
