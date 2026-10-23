@@ -27,7 +27,7 @@ const App = defineComponent({
           sessionSecret: params.get('session') || '',
           apiBaseUrl: params.get('api') || 'http://localhost:8080',
           reference: 'ORD-24817',
-          paymentMethods: ['card', 'mobile_money'],
+          paymentMethods: ['card', 'mobile_money', 'bank_transfer'],
           successDelayMs: 600000,
           theme: { companyName: 'Kente & Co.' },
           onSuccess: (r: { paymentId: string }) => events.push(`success:${r.paymentId}`),
