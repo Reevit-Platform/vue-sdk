@@ -27,7 +27,7 @@ import {
   type ReevitTheme,
 } from '@reevit/core';
 
-import { isPaymentFailure, pollPaymentStatus } from '../utils/pollPaymentStatus';
+import { isDefinitiveFailure, isPaymentFailure, pollPaymentStatus } from '../utils/pollPaymentStatus';
 
 const DEFAULT_PUBLIC_API_BASE_URL = 'https://api.reevit.io';
 
@@ -568,21 +568,29 @@ export function useReevit(options: UseReevitOptions) {
 
     try {
       // Use the public confirm endpoint if a client secret is available
-      const confirm = () =>
-        intent.clientSecret
-          ? apiClient.confirmPaymentIntent(intent.id, intent.clientSecret)
-          : apiClient.confirmPayment(intent.id);
+      const confirm = async () => {
+        try {
+          return await (intent.clientSecret
+            ? apiClient.confirmPaymentIntent(intent.id, intent.clientSecret)
+            : apiClient.confirmPayment(intent.id));
+        } catch {
+          return { error: { code: 'network_error', message: 'Could not reach Reevit.', recoverable: true } as PaymentError };
+        }
+      };
 
       const first = await confirm();
       if (controller.signal.aborted) return;
 
-      if (first.error) {
+      // The backend saying outright that the payment failed is a failure. Anything
+      // else (network, timeout, 5xx, 429, junk) says nothing: the buyer may already
+      // be debited, so keep confirming instead of offering a retry.
+      if (first.error && isDefinitiveFailure(first.error)) {
         fail(first.error);
         return;
       }
 
       let confirmed = first.data;
-      if (confirmed?.status !== 'succeeded' && !isPaymentFailure(confirmed?.status)) {
+      if (first.error || (confirmed?.status !== 'succeeded' && !isPaymentFailure(confirmed?.status))) {
         confirmation.value = 'confirming';
         onStateChange?.('confirming');
         const settled = await pollPaymentStatus({

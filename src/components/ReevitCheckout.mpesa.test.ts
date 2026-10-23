@@ -275,10 +275,12 @@ describe('ReevitCheckout never treats a pending payment as paid', () => {
       resumeTransaction = resumeTransaction;
     } as any;
     let poll = 0;
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
-      String(input).includes('/confirm-intent')
-        ? new Response(JSON.stringify(confirm(++poll)), { status: 200 })
-        : new Response('{}', { status: 200 }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (!String(input).includes('/confirm-intent')) return new Response('{}', { status: 200 });
+      const out = confirm(++poll);
+      if (out instanceof Error) throw out;
+      return out instanceof Response ? out : new Response(JSON.stringify(out), { status: 200 });
+    });
     vi.stubGlobal('fetch', fetchMock);
     const view = render(ReevitCheckout, {
       props: {
@@ -324,6 +326,37 @@ describe('ReevitCheckout never treats a pending payment as paid', () => {
     expect((emitted().success[0] as unknown[])[0]).toMatchObject({ status: 'success' });
     expect(emitted().error).toBeUndefined();
     expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('/confirm-intent')).length).toBe(4);
+  });
+
+
+  const NON_DEFINITIVE: Array<[string, (poll: number) => unknown]> = [
+    ['a 503', (poll) => (poll === 1 ? new Response('{"message":"down"}', { status: 503 }) : { id: 'pay_mock_1', status: 'succeeded' })],
+    ['a 429', (poll) => (poll === 1 ? new Response('{}', { status: 429 }) : { id: 'pay_mock_1', status: 'succeeded' })],
+    ['a network error', (poll) => (poll === 1 ? new TypeError('Failed to fetch') : { id: 'pay_mock_1', status: 'succeeded' })],
+    ['an unparseable answer', (poll) => (poll === 1 ? new Response('<html>bad gateway</html>', { status: 200 }) : { id: 'pay_mock_1', status: 'succeeded' })],
+  ];
+
+  it.each(NON_DEFINITIVE)('keeps confirming, with no Try again, when the first check is %s', async (_name, respond) => {
+    const { emitted } = await providerSaysPaid(respond);
+
+    expect(screen.getByText('Confirming your payment')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(q('failure')).toBeNull();
+    expect(emitted().error).toBeUndefined();
+
+    await advance(16_000);
+
+    expect(emitted().success).toHaveLength(1);
+    expect(emitted().error).toBeUndefined();
+  });
+
+  it('shows the failure panel when the first check is a definitive decline', async () => {
+    const { emitted } = await providerSaysPaid(() => new Response('{"message":"Card declined"}', { status: 402 }));
+
+    expect(emitted().success).toBeUndefined();
+    expect(emitted().error).toHaveLength(1);
+    expect(q('failure')).not.toBeNull();
+    expect(screen.queryByText('Confirming your payment')).toBeNull();
   });
 
   it('can be closed while confirming, without cancelling the payment or asking to stay', async () => {
