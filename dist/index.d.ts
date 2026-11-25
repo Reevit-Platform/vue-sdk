@@ -8,4 +8,4 @@ export type { PaymentMethod, MobileMoneyNetwork, ReevitCheckoutConfig, ReevitChe
 export { formatAmount, validatePhone, detectNetwork, formatPhone, detectCountryFromCurrency, cn, ReevitAPIClient, createReevitClient, } from '@reevit/core';
 export { createDirectChargeClient, CLIENT_SECRET_HEADER, type DirectChargeApi, type DirectApiError, type PublicAttempt, type BankDetails, } from './api';
 export type { MethodOption, CheckoutProvider } from './types';
-export { loadPaystackScript, loadHubtelScript, loadFlutterwaveScript, loadStripeScript, loadMonnifyScript, openPaystackPopup, openHubtelPopup, openFlutterwaveModal, createStripeInstance, confirmStripePayment, openMonnifyModal, type PaystackConfig, type HubtelConfig, type FlutterwaveConfig, type StripeConfig, type MonnifyConfig, } from './bridges';
+export { loadPaystackScript, loadHubtelScript, loadFlutterwaveScript, loadStripeScript, loadMonnifyScript, openPaystackPopup, openHubtelPopup, openFlutterwaveModal, flutterwaveTxRef, createStripeInstance, confirmStripePayment, openMonnifyModal, type PaystackConfig, type HubtelConfig, type FlutterwaveConfig, type StripeConfig, type MonnifyConfig, } from './bridges';

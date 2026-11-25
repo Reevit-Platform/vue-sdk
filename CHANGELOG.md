@@ -1,3 +1,8 @@
+# @reevit/vue — 0.14.2
+
+- **Flutterwave payments are now confirmed.** The Flutterwave window paid under the Reevit payment id, while Reevit checks and binds the payment by the reference it created it under (`pf_…`). The two never met, so a paid payment stayed "needs action" and `success` never fired. The window now pays under Reevit's reference.
+- New export `flutterwaveTxRef(intent, fallback?)`, for anyone calling `openFlutterwaveModal` themselves: pass its result as `tx_ref`.
+
 # Changelog
 
 All notable changes to `@reevit/vue` will be documented in this file.

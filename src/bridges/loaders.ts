@@ -373,6 +373,24 @@ export async function openHubtelPopup(config: HubtelConfig): Promise<HubtelCheck
 /**
  * Opens Flutterwave modal
  */
+/**
+ * The `tx_ref` to open Flutterwave's window with.
+ *
+ * Reevit creates the Flutterwave payment server-side under its own reference
+ * (`pf_…`, returned as `provider_ref_id`) and later asks Flutterwave about that
+ * reference, both when it checks the payment's status and when it binds
+ * Flutterwave's webhook to the payment. The window must pay under the same
+ * reference, or Reevit never learns the payer paid.
+ */
+export function flutterwaveTxRef(
+  intent: { providerRefId?: string; reference?: string; id?: string } | null | undefined,
+  fallback?: string
+): string {
+  const stored = intent?.providerRefId?.trim();
+  if (stored && stored.startsWith('pf_')) return stored;
+  return intent?.reference || fallback || intent?.id || `flw_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 export async function openFlutterwaveModal(config: FlutterwaveConfig): Promise<void> {
   await loadFlutterwaveScript();
 
