@@ -226,6 +226,8 @@ export interface FlutterwaveConfig {
     logo?: string;
   };
   meta?: Record<string, unknown>;
+  /** Flutterwave navigates here when done, instead of calling `callback`. */
+  redirect_url?: string;
   callback: (response: { transaction_id: number; tx_ref: string;[key: string]: unknown }) => void;
   onclose: () => void;
 }
@@ -387,6 +389,8 @@ export async function openFlutterwaveModal(config: FlutterwaveConfig): Promise<v
     payment_options: config.payment_options,
     customizations: config.customizations,
     meta: config.meta,
+    // Flutterwave prefers redirect_url over callback, so send it only when asked.
+    ...(config.redirect_url ? { redirect_url: config.redirect_url } : {}),
     callback: config.callback,
     onclose: config.onclose,
   });

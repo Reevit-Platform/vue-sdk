@@ -1,6 +1,6 @@
 {
   "name": "@reevit/vue",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Reevit Vue 3 Payment Checkout SDK — Unified payment orchestration for Africa (Paystack, Hubtel, Flutterwave, M-Pesa, Moolre, Monnify, PawaPay, Stripe)",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
