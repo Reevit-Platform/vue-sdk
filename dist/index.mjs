@@ -46,7 +46,7 @@ async function tt({
       i += 1, g = Math.min(n * 2 ** i, t);
   }
 }
-const nt = "0.14.0", ot = "https://api.reevit.io", mn = 12e4, Bn = 4e3;
+const nt = "0.14.1", ot = "https://api.reevit.io", mn = 12e4, Bn = 4e3;
 function hn(e, A) {
   return {
     code: A?.code || "payment_link_error",
@@ -2838,6 +2838,8 @@ async function wr(e) {
     payment_options: e.payment_options,
     customizations: e.customizations,
     meta: e.meta,
+    // Flutterwave prefers redirect_url over callback, so send it only when asked.
+    ...e.redirect_url ? { redirect_url: e.redirect_url } : {},
     callback: e.callback,
     onclose: e.onclose
   });
@@ -3079,7 +3081,8 @@ const Qr = {
     isOpen: { type: Boolean },
     apiBaseUrl: {},
     initialPaymentIntent: {},
-    successDelayMs: {}
+    successDelayMs: {},
+    returnUrl: {}
   },
   emits: ["success", "error", "close", "stateChange"],
   setup(e, { emit: A }) {
@@ -3323,6 +3326,7 @@ const Qr = {
               connection_id: y.connectionId ?? t.metadata?.connection_id,
               customer_phone: ne
             },
+            redirect_url: t.returnUrl,
             callback: (O) => Te(O),
             onclose: () => Ue()
           });

@@ -110,6 +110,14 @@ const props = defineProps<{
   apiBaseUrl?: string;
   initialPaymentIntent?: any;
   successDelayMs?: number;
+  /**
+   * Where Flutterwave sends the payer when its payment window is done. Set it
+   * when a method needs an off-page approval step (Ghana mobile money).
+   * Flutterwave then navigates here instead of calling `onSuccess`: confirm the
+   * payment on that page from the `status`, `tx_ref` and `transaction_id` it
+   * adds to the URL. Leave it unset to keep the callback flow.
+   */
+  returnUrl?: string;
 }>();
 
 const emit = defineEmits<{
@@ -514,6 +522,7 @@ const openProvider = async (psp: string, method: PaymentMethod) => {
           connection_id: intent.connectionId ?? (props.metadata?.connection_id as string),
           customer_phone: phone,
         },
+        redirect_url: props.returnUrl,
         callback: (res) => onProviderSuccess(res),
         onclose: () => handleProviderClose(),
       });

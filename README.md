@@ -198,6 +198,7 @@ const {
 | `theme` | `ReevitTheme` | Customization options for the widget |
 | `apiBaseUrl` | `string` | Override API base URL (self-hosted/testing) |
 | `successDelayMs` | `number` | Delay before calling `@success` and closing (default `5000`) |
+| `returnUrl` | `string` | Flutterwave only. Where Flutterwave sends the payer when its window is done. When set, Flutterwave navigates there instead of calling `@success`; confirm the payment on that page |
 
 ## Theme Reference
 
