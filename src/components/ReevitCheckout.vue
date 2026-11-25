@@ -46,6 +46,7 @@ import {
   openPaystackPopup,
   openHubtelPopup,
   openFlutterwaveModal,
+  flutterwaveTxRef,
   openMonnifyModal,
 } from '../bridges';
 import {
@@ -508,7 +509,7 @@ const openProvider = async (psp: string, method: PaymentMethod) => {
     } else if (psp === 'flutterwave') {
       await openFlutterwaveModal({
         public_key: intent.pspPublicKey || props.publicKey || '',
-        tx_ref: intent.id,
+        tx_ref: flutterwaveTxRef(intent),
         amount: toFlutterwaveAmount(displayAmount.value, displayCurrency.value),
         currency: displayCurrency.value,
         customer: {

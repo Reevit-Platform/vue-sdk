@@ -66,6 +66,7 @@ export {
   openPaystackPopup,
   openHubtelPopup,
   openFlutterwaveModal,
+  flutterwaveTxRef,
   createStripeInstance,
   confirmStripePayment,
   openMonnifyModal,
